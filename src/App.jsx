@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays,
   Check, ChevronDown, CircleHelp, CloudSun, Download, FileUp, Gauge, Home,
-  Info, Layers3, Lightbulb, Menu, Minus, Moon, PanelTop, Play, Plus, RotateCcw, Settings2,
+  Info, Layers3, Lightbulb, Maximize, Menu, Minimize, Minus, Moon, PanelTop, Play, Plus, RotateCcw, Settings2,
   SlidersHorizontal, Sun, Wifi, X, Zap,
 } from 'lucide-react'
 import ResidenceScene from './ResidenceScene.jsx'
@@ -153,6 +153,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [mobileNav, setMobileNav] = useState(false)
+  const [siteTheme, setSiteTheme] = useState(() => localStorage.getItem('solar-monitor-theme') || 'dark')
+  const [fullScreen, setFullScreen] = useState(false)
   const [sunHours, setSunHours] = useState(4.5)
   const [loss, setLoss] = useState(20)
   const samples = useReal && realSamples.length ? realSamples : DEMO
@@ -179,6 +181,16 @@ export default function App() {
   useEffect(() => { localStorage.setItem('solar-monitor-endpoint', endpoint) }, [endpoint])
   useEffect(() => { localStorage.setItem('solar-monitor-source', sourceKind) }, [sourceKind])
   useEffect(() => { if (realSamples.length) localStorage.setItem('solar-monitor-samples', JSON.stringify(realSamples)) }, [realSamples])
+  useEffect(() => { localStorage.setItem('solar-monitor-theme', siteTheme) }, [siteTheme])
+  useEffect(() => {
+    const syncFullScreen = () => setFullScreen(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', syncFullScreen)
+    return () => document.removeEventListener('fullscreenchange', syncFullScreen)
+  }, [])
+  function toggleFullScreen() {
+    if (document.fullscreenElement) document.exitFullscreen()
+    else document.documentElement.requestFullscreen()
+  }
 
   function importSamples(data, parseError, source = 'csv') {
     if (parseError) { setError(parseError); return }
@@ -214,7 +226,7 @@ export default function App() {
   }, [endpoint, useReal, sourceKind])
 
   const selectSection = (label) => { setSection(label); setMode('real'); setMobileNav(false) }
-  return <div className={`app-shell ${mode === 'real' && section === 'Visão geral' ? 'visual-layout' : ''}`}>
+  return <div className={`app-shell ${mode === 'real' && section === 'Visão geral' ? 'visual-layout' : ''} ${siteTheme === 'light' ? 'site-light' : ''}`}>
     {mobileNav && <button className="nav-backdrop" aria-label="Fechar menu" onClick={() => setMobileNav(false)} />}
     <aside className={`sidebar ${mobileNav ? 'open' : ''}`}>
       <div className="brand"><div className="brand-mark"><Sun size={24} /></div><div><strong>SOLAR<span>CASA</span></strong><small>ENERGY STUDIO</small></div></div>
@@ -224,14 +236,14 @@ export default function App() {
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="top-left"><button className="mobile-menu icon-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu" aria-expanded={mobileNav}><Menu size={20} /></button><div className="breadcrumb">Residência <span>/</span> {mode === 'sim' ? 'Simulação' : section}</div></div><div className="top-right"><WeatherPanel compact />{section !== 'Casa inteligente' && <><span className={`data-badge ${demo ? 'demo' : 'actual'}`}><span />{demo ? 'DADOS DE EXEMPLO' : sourceKind === 'wifi' ? 'FONTE WI‑FI / JSON' : 'DADOS DE CSV'}</span><button className="icon-button help" onClick={() => setShowModal(true)} title="Ajuda e dados"><CircleHelp size={18} /></button></>}</div></header>
+      <header className="topbar"><div className="top-left"><button className="mobile-menu icon-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu" aria-expanded={mobileNav}><Menu size={20} /></button><div className="breadcrumb">Residência <span>/</span> {mode === 'sim' ? 'Simulação' : section}</div></div><div className="top-right"><WeatherPanel compact />{section !== 'Casa inteligente' && <button className="icon-button help" onClick={() => setShowModal(true)} title="Ajuda e dados" aria-label="Ajuda e dados"><CircleHelp size={18} /></button>}<button className="theme-toggle icon-button" onClick={() => setSiteTheme(siteTheme === 'dark' ? 'light' : 'dark')} aria-label={siteTheme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} title={siteTheme === 'dark' ? 'Tema claro' : 'Tema escuro'}><Lightbulb size={18} /></button><button className="icon-button" onClick={() => setShowModal(true)} aria-label="Conectar dados" title="Conectar dados"><Wifi size={18} /></button><button className="icon-button" onClick={toggleFullScreen} aria-label={fullScreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'} title={fullScreen ? 'Sair da tela cheia' : 'Tela cheia'}>{fullScreen ? <Minimize size={18} /> : <Maximize size={18} />}</button></div></header>
 
       <div className="page-content">
-        <div className="page-heading"><div><div className="eyebrow">{section === 'Casa inteligente' ? 'AUTOMAÇÃO RESIDENCIAL' : 'MONITORAMENTO RESIDENCIAL'}</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div>{section !== 'Casa inteligente' && <div className="page-actions"><button className="outline-button" onClick={() => setShowModal(true)}><Wifi size={17} /> Conectar dados</button></div>}</div>
+        <div className="page-heading"><div><div className="eyebrow">{section === 'Casa inteligente' ? 'AUTOMAÇÃO RESIDENCIAL' : 'MONITORAMENTO RESIDENCIAL'}</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div></div>
         {section !== 'Casa inteligente' && <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button></div>}
 
         {section === 'Casa inteligente' ? <SmartHome /> : mode === 'real' ? <>
-          {demo && <div className="notice"><Info size={17} /><span>Visualização demonstrativa. Conecte a ponte do datalogger Wi‑Fi ou importe leituras para mostrar dados reais.</span><button onClick={() => setShowModal(true)}>Configurar <ArrowRight size={14} /></button></div>}
+          {demo && section !== 'Visão geral' && <div className="notice"><Info size={17} /><span>Visualização demonstrativa. Conecte a ponte do datalogger Wi‑Fi ou importe leituras para mostrar dados reais.</span><button onClick={() => setShowModal(true)}>Configurar <ArrowRight size={14} /></button></div>}
           {!demo && current.consumption_kw == null && <div className="detail-info data-gap"><Info size={17} /> A fonte não informou consumo da casa. Campos de consumo e rede ficam indisponíveis até haver medidor/TC ou outra medição.</div>}
           {section === 'Visão geral' ? <VisualMonitor night={night} setNight={setNight} current={current} totals={totals} samples={samples} demo={demo} onConnect={() => setShowModal(true)} /> : <MonitoringDetails section={section} demo={demo} samples={samples} current={current} totals={totals} endpoint={endpoint} sourceKind={sourceKind} connectionStatus={connectionStatus} lastSync={lastSync} onConnect={() => setShowModal(true)} />}
         </> : <>

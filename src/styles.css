@@ -8,3 +8,26 @@
 @media(max-width:700px){.detail-values,.detail-columns.devices{grid-template-columns:1fr}.detail-value{min-height:115px}.detail-panel{padding:15px}.detail-value strong{font-size:20px}.period-tabs{flex-wrap:wrap}}
 .page-content{max-width:none}
 .data-gap{margin-bottom:17px}
+
+.app-shell.site-light{--bg:#eef3f6;--panel:#fff;--text:#203746;background:#eef3f6;color:#203746}
+.site-light .main-content,.site-light .page-content{background:#eef3f6;color:#203746}
+.site-light .sidebar{background:#f9fbfc;border-color:#d7e1e7;color:#304957}
+.site-light .brand strong,.site-light .sidebar nav button,.site-light .sidebar-system strong{color:#294352}
+.site-light .sidebar nav button{color:#58717d}.site-light .sidebar nav button.nav-active{background:#e1f3e9;color:#188354}
+.site-light .topbar{background:#f9fbfc;border-color:#d8e2e8}.site-light .breadcrumb,.site-light .page-heading h1{color:#203746}
+.site-light .page-heading p,.site-light .eyebrow{color:#69818d}
+.site-light .tabbar{border-color:#d4dfe5}.site-light .tabbar button{color:#647c89}.site-light .tabbar button.active{color:#168351}
+.site-light .metric-card,.site-light .scene-card,.site-light .chart-card,.site-light .flow-card,.site-light .info-card,.site-light .sim-panel,.site-light .detail-value,.site-light .detail-panel{background:#fff;border-color:#d7e1e7;box-shadow:0 8px 24px #294b5b0b;color:#243c4a}
+.site-light .card-heading h2,.site-light .metric-copy strong,.site-light .detail-value strong,.site-light .detail-panel h2,.site-light .detail-panel h3{color:#243c4a}
+.site-light .metric-copy span,.site-light .metric-copy em,.site-light .card-heading .eyebrow,.site-light .detail-value span,.site-light .device-row span{color:#68818e}
+.site-light .outline-button,.site-light .icon-button,.site-light .period-tabs button{background:#fff;border-color:#cbd9e0;color:#385361}
+.site-light .visual-dashboard{background:#f1f5f8}.site-light .visual-dashboard .visual-chart-grid>section{background:#fff;border-color:#d7e1e7}
+.site-light .visual-dashboard .visual-chart-grid h3,.site-light .visual-dashboard .system-capacity strong{color:#243c4a}
+.site-light .visual-dashboard .autonomy-ring>div{background:#fff}
+.site-light .chart-tooltip{background:#fff;color:#243c4a;border-color:#d4e0e6}
+.site-light .sim-power{background:#e6f4ee;border-color:#b8ddca}.site-light .sim-power>span,.site-light .sim-power>div,.site-light .control-label,.site-light .control-label strong{color:#34594a}
+.site-light .estimate{background:#e4f3ec}.site-light .estimate span,.site-light .estimate strong{color:#28543f}
+.site-light .detail-info{background:#eef6f9;color:#45616e;border-color:#cadce4}
+.site-light .reading-table th,.site-light .reading-table td{border-color:#d9e3e8}.site-light .reading-table th{color:#66808c}.site-light .reading-table td{color:#294452}
+.site-light .device-row{border-color:#d9e3e8}.site-light .device-row strong{color:#294452}
+.site-light .modal{background:#fff;color:#243c4a;border-color:#d1dfe5}.site-light .modal h2,.site-light .upload-zone strong{color:#243c4a}.site-light .modal>p,.site-light .field-label,.site-light .wifi-steps>div{color:#526d79}.site-light .text-input{background:#f7fafb;color:#243c4a;border-color:#c7d8df}

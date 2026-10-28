@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Box, ChevronRight, CircleDot, Expand, Home, Layers3, LocateFixed, Map, Moon, Move3D, Network, Pause, Play, RotateCcw, Sun, Wifi, X, Zap } from 'lucide-react'
+import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Box, ChevronRight, CircleDot, Home, Layers3, LocateFixed, Map, Moon, Move3D, Network, Pause, Play, RotateCcw, Sun, Zap } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import ResidenceScene from './ResidenceScene.jsx'
 import { solarPosition, zoneParts, zonedDayMinuteToDate } from './solarPosition.js'
@@ -54,13 +54,12 @@ function TechnicalView({ current, totals, demo }) {
   </div><div className="technical-bottom"><section><h3>Energia no período</h3><Balance totals={totals} /></section><section><h3>Tensão e corrente</h3><dl><div><dt>Saída CA</dt><dd>{number(current.ac_voltage_v, 1)} V</dd></div><div><dt>Corrente</dt><dd>{number(current.ac_current_a, 1)} A</dd></div><div><dt>Frequência</dt><dd>{number(current.frequency_hz, 1)} Hz</dd></div></dl></section><section><h3>Estado do inversor</h3><div className="technical-status"><CircleDot size={17} /><strong>{current.inverter_status || 'Não informado'}</strong></div><p>{demo ? 'Estado ilustrativo, sem conexão ao inversor.' : 'Estado recebido da fonte de dados.'}</p><div className="technical-temperature">Temperatura <b>{number(current.temperature_c, 1)} °C</b></div></section></div></div>
 }
 
-export default function VisualMonitor({ night, setNight, current, totals, samples, demo, onConnect }) {
+export default function VisualMonitor({ night, setNight, current, totals, samples, demo }) {
   const [view, setView] = useState('exterior')
   const [camera, setCamera] = useState('aerial')
   const [flow, setFlow] = useState(true)
   const [floor, setFloor] = useState('ground')
   const [room, setRoom] = useState('Sala')
-  const [expanded, setExpanded] = useState(false)
   const [lightCharts, setLightCharts] = useState(false)
   const [sceneKey, setSceneKey] = useState(0)
   const [solarLocation, setSolarLocation] = useState(savedSolarLocation)
@@ -96,21 +95,11 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
       window.dispatchEvent(new CustomEvent('solar-monitor-location-change', { detail: place }))
     }, () => setGpsError('Não foi possível obter o GPS. Escolha uma cidade no header.'), { enableHighAccuracy: false, timeout: 10000 })
   }
-  useEffect(() => {
-    if (!expanded) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const escape = (event) => { if (event.key === 'Escape') setExpanded(false) }
-    window.addEventListener('keydown', escape)
-    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', escape) }
-  }, [expanded])
   const inside = view === 'interior' || view === 'plan'
-  const selected = VIEWS.find((item) => item.id === view)
   const roomNames = RESIDENCE_ROOMS[floor].map((item) => item.name)
   function selectView(id) { setView(id); if (id === 'flow') setFlow(true) }
   const energyCards = <div className="visual-energy-dock"><EnergyCard icon={Sun} label="Produção solar" power={sceneCurrent.solar_kw} energy={totals.solar} tone="solar" /><EnergyCard icon={Home} label="Consumo da casa" power={sceneCurrent.consumption_kw} energy={totals.consumption} tone="home" /><EnergyCard icon={ArrowDownLeft} label="Importação da rede" power={sceneCurrent.import_kw} energy={totals.import} tone="import" /><EnergyCard icon={ArrowUpRight} label="Exportação para rede" power={sceneCurrent.export_kw} energy={totals.export} tone="export" /></div>
-  return <div className={`visual-monitor ${expanded ? 'expanded' : ''}`}>
-    <div className="visual-toolbar"><div><span className="visual-eyebrow">SOLAR CASA / EXPERIÊNCIA VISUAL</span><h1>{selected.caption}<span>{String(VIEWS.findIndex((item) => item.id === view) + 1).padStart(2, '0')}</span></h1></div><div className="visual-toolbar-actions"><span className={`visual-source ${demo ? 'demo' : ''}`}><i />{demo ? 'Demonstração' : 'Dados recebidos'}</span><button onClick={onConnect} aria-label="Conectar dados"><Wifi size={16} /><span>Conectar dados</span></button><button className="expand-button" onClick={() => setExpanded(!expanded)} aria-label={expanded ? 'Sair da vista ampliada' : 'Ampliar visualização'}>{expanded ? <X size={18} /> : <Expand size={18} />}</button></div></div>
+  return <div className="visual-monitor">
     <div className="visual-view-tabs">{VIEWS.map(({ id, name, icon: Icon }, i) => <button key={id} aria-pressed={view === id} className={view === id ? 'active' : ''} onClick={() => selectView(id)}><Icon size={18} /><span>{name}</span><small>0{i + 1}</small></button>)}</div>
     {view === 'dashboard' ? <div className={`visual-dashboard ${lightCharts ? 'light-charts' : ''}`}><div className="dashboard-display-title"><span>PAINEL DE ENERGIA</span><button onClick={() => setLightCharts(!lightCharts)}>{lightCharts ? <Moon size={16} /> : <Sun size={16} />}{lightCharts ? 'Tema escuro' : 'Tema claro'}</button></div>{energyCards}<div className="visual-chart-grid"><section className="visual-chart-main"><header><div><small>POTÊNCIA / kW</small><h3>Geração e consumo</h3></div><div className="visual-chart-legend"><span>● Solar</span><span>● Casa</span><span>● Importação</span><span>● Exportação</span></div></header><Chart samples={samples} light={lightCharts} /></section><section><header><div><small>ORIGEM DO CONSUMO</small><h3>Independência da rede</h3></div></header><Autonomy totals={totals} /></section><section className="visual-chart-main"><header><div><small>ENERGIA / kWh</small><h3>Balanço do período</h3></div></header><ResponsiveContainer width="100%" height={210}><BarChart data={[{ name: 'Solar', value: totals.solar, color: '#4cdda2' }, { name: 'Casa', value: totals.consumption, color: '#ffb05e' }, { name: 'Importação', value: totals.import, color: '#f87980' }, { name: 'Exportação', value: totals.export, color: '#77b7fb' }]}><CartesianGrid vertical={false} stroke={lightCharts ? '#e2e8ec' : '#273b47'} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#87a0b2' }} /><YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#87a0b2' }} /><Tooltip contentStyle={{ background: lightCharts ? '#fff' : '#102938', border: '1px solid #426477', borderRadius: 8 }} formatter={(value) => [`${number(value, 1)} kWh`, 'Energia']} /><Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={75}>{['#4cdda2', '#ffb05e', '#f87980', '#77b7fb'].map((color) => <Cell key={color} fill={color} />)}</Bar></BarChart></ResponsiveContainer></section><section><header><div><small>SISTEMA INSTALADO</small><h3>Sua usina solar</h3></div></header><div className="system-capacity"><Sun size={30} /><strong>7,56 <small>kWp</small></strong><span>12 módulos · Inversor de 6 kW</span></div></section></div></div> : view === 'technical' ? <TechnicalView current={current} totals={totals} demo={demo} /> : <>
       <div className="sun-timeline" aria-label="Percurso do sol em 24 horas">
