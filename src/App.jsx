@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays,
   Check, ChevronDown, CircleHelp, CloudSun, Download, FileUp, Gauge, Home,
-  Info, Layers3, Menu, Minus, Moon, PanelTop, Play, Plus, RotateCcw, Settings2,
+  Info, Layers3, Lightbulb, Menu, Minus, Moon, PanelTop, Play, Plus, RotateCcw, Settings2,
   SlidersHorizontal, Sun, Wifi, X, Zap,
 } from 'lucide-react'
 import ResidenceScene from './ResidenceScene.jsx'
 import VisualMonitor from './VisualMonitor.jsx'
 import MonitoringDetails from './MonitoringDetails.jsx'
 import WeatherPanel from './WeatherPanel.jsx'
+import SmartHome from './SmartHome.jsx'
 
 const fmt = (value, decimals = 2) => value == null ? '—' : Number(value).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 const shown = (value, decimals = 2) => value == null ? '—' : fmt(value, decimals)
@@ -74,6 +75,7 @@ const navItems = [
   { label: 'Energia', icon: Zap },
   { label: 'Histórico', icon: BarChart3 },
   { label: 'Dispositivos', icon: PanelTop },
+  { label: 'Casa inteligente', icon: Lightbulb },
   { label: 'Alertas', icon: Activity },
   { label: 'Relatórios', icon: Download },
 ]
@@ -83,6 +85,7 @@ const sectionDescriptions = {
   Energia: 'Consumo, uso direto do solar e trocas com a rede.',
   Histórico: 'Curvas de potência e leituras registradas.',
   Dispositivos: 'Estado do inversor e comunicação do datalogger.',
+  'Casa inteligente': 'Controle as luzes e os aparelhos conectados da sua casa.',
   Alertas: 'Eventos informados pela fonte e falhas de comunicação.',
   Relatórios: 'Resumo e exportação das leituras disponíveis.',
 }
@@ -221,13 +224,13 @@ export default function App() {
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="top-left"><button className="mobile-menu icon-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu" aria-expanded={mobileNav}><Menu size={20} /></button><div className="breadcrumb">Residência <span>/</span> {mode === 'sim' ? 'Simulação' : section}</div></div><div className="top-right"><WeatherPanel compact /><span className={`data-badge ${demo ? 'demo' : 'actual'}`}><span />{demo ? 'DADOS DE EXEMPLO' : sourceKind === 'wifi' ? 'FONTE WI‑FI / JSON' : 'DADOS DE CSV'}</span><button className="icon-button help" onClick={() => setShowModal(true)} title="Ajuda e dados"><CircleHelp size={18} /></button></div></header>
+      <header className="topbar"><div className="top-left"><button className="mobile-menu icon-button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu" aria-expanded={mobileNav}><Menu size={20} /></button><div className="breadcrumb">Residência <span>/</span> {mode === 'sim' ? 'Simulação' : section}</div></div><div className="top-right"><WeatherPanel compact />{section !== 'Casa inteligente' && <><span className={`data-badge ${demo ? 'demo' : 'actual'}`}><span />{demo ? 'DADOS DE EXEMPLO' : sourceKind === 'wifi' ? 'FONTE WI‑FI / JSON' : 'DADOS DE CSV'}</span><button className="icon-button help" onClick={() => setShowModal(true)} title="Ajuda e dados"><CircleHelp size={18} /></button></>}</div></header>
 
       <div className="page-content">
-        <div className="page-heading"><div><div className="eyebrow">MONITORAMENTO RESIDENCIAL</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div><div className="page-actions"><button className="outline-button" onClick={() => setShowModal(true)}><Wifi size={17} /> Conectar dados</button></div></div>
-        <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button></div>
+        <div className="page-heading"><div><div className="eyebrow">{section === 'Casa inteligente' ? 'AUTOMAÇÃO RESIDENCIAL' : 'MONITORAMENTO RESIDENCIAL'}</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div>{section !== 'Casa inteligente' && <div className="page-actions"><button className="outline-button" onClick={() => setShowModal(true)}><Wifi size={17} /> Conectar dados</button></div>}</div>
+        {section !== 'Casa inteligente' && <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button></div>}
 
-        {mode === 'real' ? <>
+        {section === 'Casa inteligente' ? <SmartHome /> : mode === 'real' ? <>
           {demo && <div className="notice"><Info size={17} /><span>Visualização demonstrativa. Conecte a ponte do datalogger Wi‑Fi ou importe leituras para mostrar dados reais.</span><button onClick={() => setShowModal(true)}>Configurar <ArrowRight size={14} /></button></div>}
           {!demo && current.consumption_kw == null && <div className="detail-info data-gap"><Info size={17} /> A fonte não informou consumo da casa. Campos de consumo e rede ficam indisponíveis até haver medidor/TC ou outra medição.</div>}
           {section === 'Visão geral' ? <VisualMonitor night={night} setNight={setNight} current={current} totals={totals} samples={samples} demo={demo} onConnect={() => setShowModal(true)} /> : <MonitoringDetails section={section} demo={demo} samples={samples} current={current} totals={totals} endpoint={endpoint} sourceKind={sourceKind} connectionStatus={connectionStatus} lastSync={lastSync} onConnect={() => setShowModal(true)} />}

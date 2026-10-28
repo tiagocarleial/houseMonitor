@@ -15,7 +15,13 @@ Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). Para g
 
 Em **Visão geral**, o painel reúne seis visualizações: Vista externa, Fluxo de energia, Corte interno, Planta da casa, Dashboard e Diagrama técnico. A cena oferece iluminação diurna/noturna, câmeras aérea/fachada/telhado e ampliação. O dashboard alterna entre temas claro e escuro.
 
-O menu oferece **Visão geral, Solar, Energia, Histórico, Dispositivos, Alertas e Relatórios**. As páginas usam apenas os campos fornecidos pela fonte. Campos ausentes aparecem como não informados, sem serem tratados como zero.
+O menu oferece **Visão geral, Solar, Energia, Histórico, Dispositivos, Casa inteligente, Alertas e Relatórios**. As páginas de monitoramento usam apenas os campos fornecidos pela fonte. Campos ausentes aparecem como não informados, sem serem tratados como zero.
+
+## Casa inteligente
+
+A aba **Casa inteligente** começa em modo demonstração: os botões alteram somente os estados exibidos neste navegador. Para controlar aparelhos reais, clique em **Conectar Home Assistant**, informe a URL base da instalação e um token de acesso de longa duração criado no perfil do Home Assistant. O painel lista entidades dos domínios `light`, `switch`, `fan` e `input_boolean`, e envia comandos `turn_on`/`turn_off` pela API REST. Estados são atualizados a cada 30 segundos e após cada comando.
+
+O navegador precisa conseguir acessar o Home Assistant, e a instalação deve permitir CORS para a origem do painel. Ao usar HTTPS no painel, use HTTPS também no Home Assistant. A URL é salva no armazenamento local; o token fica apenas na sessão da aba e é apagado ao desconectar. Os dados solares e a conexão Home Assistant são independentes.
 
 O modelo residencial foi ajustado pelas fotos da fachada, dos fundos e do lote visto de cima. Representa um duplex em terreno estreito e comprido, com recuo pavimentado, fachada bege com faixa de pedra e ciprestes, varanda coberta e quintal gramado. As câmeras **Fachada** e **Fundos** destacam a unidade. O corte e a planta oferecem três quartos no andar superior; a disposição das divisórias, as dimensões e a distribuição dos 12 módulos entre as águas do telhado são ilustrativas até haver uma planta e medidas reais.
 
