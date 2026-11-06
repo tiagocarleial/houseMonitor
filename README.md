@@ -31,7 +31,18 @@ No header, busque uma cidade ou use a localização do navegador para ver temper
 
 ## Sistema real
 
-O painel inicia com dados de exemplo. Para visualizar medições reais, use **Conectar dados** e configure uma ponte local ou API autorizada que disponibilize leituras em JSON, ou importe um CSV com `timestamp` e `solar_kw`. A fonte deve permitir CORS. Os campos opcionais incluem consumo, importação/exportação da rede, tensão, corrente, frequência, temperatura, entradas CC e estado do inversor.
+### Sem medidor inteligente
+
+Use **Leituras Enel** para salvar uma primeira leitura dos três registros acumulados: energia recebida da rede, energia enviada à rede e geração total AUXSOL. O painel mostra que essa referência foi registrada e aguarda uma segunda leitura. Nas leituras seguintes, informe novamente os três totais acumulados. As diferenças fornecem importação, exportação e produção do intervalo. O painel calcula o consumo da casa (`produção + recebida − enviada`) e o autoconsumo solar (`produção − enviada`). Os registros não precisam começar em zero. O formulário aceita valores fictícios e intervalos curtos para simulação. O histórico manual pode ser visto por intervalo, dia, mês e ano e exportado em CSV. Ele fica salvo neste navegador.
+
+O **saldo na rede** aparece após a segunda leitura: energia enviada menos energia recebida no intervalo. Um resultado positivo indica mais energia enviada que recebida. O painel também mostra o saldo líquido desde a leitura inicial. Esses números não substituem o saldo de créditos apurado na fatura pela Enel.
+O CSV inclui `saldo_rede_kwh` para cada intervalo e `saldo_acumulado_kwh` para o total progressivo desde a primeira leitura; o gráfico manual mostra a evolução desse acumulado.
+
+O botão **Zerar todos os dados**, no menu lateral, apaga as leituras Enel, amostras importadas, configurações e dados locais de demonstração deste site neste navegador. Depois da limpeza, os indicadores de monitoramento começam em zero; a capacidade física cadastrada (12 módulos, 7,56 kWp e inversor de 6 kW) continua sendo a configuração do sistema.
+
+O formulário manual requer o total acumulado de geração do AUXSOL, não a produção de um único dia. Uma leitura do medidor às 18h deve ser acompanhada pelo total AUXSOL registrado às 18h. Leituras antigas sem esse total continuam no histórico, mas o consumo de seus intervalos fica pendente; a primeira nova leitura com total AUXSOL serve como referência solar. Registros inteiros do medidor Enel podem esconder pequenos fluxos quando dois valores consecutivos são iguais. Potência instantânea da casa e créditos da fatura Enel não são inferidos desses registros.
+
+O painel inicia com indicadores de monitoramento zerados. Para visualizar medições reais, use **Conectar dados** e configure uma ponte local ou API autorizada que disponibilize leituras em JSON, ou importe um CSV com `timestamp` e `solar_kw`. A fonte deve permitir CORS. Os campos opcionais incluem consumo, importação/exportação da rede, tensão, corrente, frequência, temperatura, entradas CC e estado do inversor.
 
 As amostras e a URL são guardadas no armazenamento local do navegador. O datasheet fornecido descreve o inversor AUXSOL ASN-6SL-G2, mas não especifica uma API de monitoramento; a integração direta depende do método autorizado para a instalação.
 

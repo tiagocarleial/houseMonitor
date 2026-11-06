@@ -43,7 +43,7 @@ function Autonomy({ totals }) {
 
 function TechnicalView({ current, totals, demo }) {
   const exported = current.export_kw > 0
-  return <div className="technical-view"><div className="technical-title"><span><Network size={18} /> DIAGRAMA DO SISTEMA</span><small>{demo ? 'Leituras demonstrativas' : 'Última leitura recebida'}</small></div><div className="technical-network">
+  return <div className="technical-view"><div className="technical-title"><span><Network size={18} /> DIAGRAMA DO SISTEMA</span><small>{demo ? 'Sem leituras da fonte' : 'Última leitura recebida'}</small></div><div className="technical-network">
     <div className={`technical-node solar ${current.solar_kw > 0 ? 'energized' : ''}`}><small>CAMPO FOTOVOLTAICO</small><Sun size={42} /><strong>{number(current.solar_kw)} <em>kW</em></strong><span>12 módulos · 7,56 kWp</span><div className="solar-symbol">{Array.from({ length: 6 }, (_, i) => <i key={i} />)}</div></div>
     <div className={`technical-link green ${current.solar_kw > 0 ? 'moving' : ''}`}><span>CC</span><i /><b>→</b></div>
     <div className="technical-node inverter"><small>INVERSOR AUXSOL</small><div className="inverter-illustration"><b>AUXSOL</b><span><Sun size={16} /></span><i /></div><strong>ASN-6SL-G2</strong><span>Saída CA · 6 kW nominal</span></div>
@@ -51,10 +51,10 @@ function TechnicalView({ current, totals, demo }) {
     <div className="technical-node home"><small>QUADRO DA CASA</small><Home size={46} /><strong>{number(current.consumption_kw)} <em>kW</em></strong><span>Consumo da residência</span></div>
     <div className={`technical-link blue ${current.import_kw > 0 || exported ? 'moving' : ''} ${!exported ? 'reverse' : ''}`}><span>REDE</span><i /><b>{exported ? '→' : current.import_kw > 0 ? '←' : '↔'}</b></div>
     <div className="technical-node grid"><small>REDE ELÉTRICA</small><Zap size={46} /><strong>{number(current.import_kw > 0 ? current.import_kw : current.export_kw ?? current.import_kw)} <em>kW</em></strong><span>{exported ? 'Exportando excedente' : current.import_kw > 0 ? 'Importando energia' : 'Sem fluxo informado'}</span></div>
-  </div><div className="technical-bottom"><section><h3>Energia no período</h3><Balance totals={totals} /></section><section><h3>Tensão e corrente</h3><dl><div><dt>Saída CA</dt><dd>{number(current.ac_voltage_v, 1)} V</dd></div><div><dt>Corrente</dt><dd>{number(current.ac_current_a, 1)} A</dd></div><div><dt>Frequência</dt><dd>{number(current.frequency_hz, 1)} Hz</dd></div></dl></section><section><h3>Estado do inversor</h3><div className="technical-status"><CircleDot size={17} /><strong>{current.inverter_status || 'Não informado'}</strong></div><p>{demo ? 'Estado ilustrativo, sem conexão ao inversor.' : 'Estado recebido da fonte de dados.'}</p><div className="technical-temperature">Temperatura <b>{number(current.temperature_c, 1)} °C</b></div></section></div></div>
+  </div><div className="technical-bottom"><section><h3>Energia no período</h3><Balance totals={totals} /></section><section><h3>Tensão e corrente</h3><dl><div><dt>Saída CA</dt><dd>{number(current.ac_voltage_v, 1)} V</dd></div><div><dt>Corrente</dt><dd>{number(current.ac_current_a, 1)} A</dd></div><div><dt>Frequência</dt><dd>{number(current.frequency_hz, 1)} Hz</dd></div></dl></section><section><h3>Estado do inversor</h3><div className="technical-status"><CircleDot size={17} /><strong>{current.inverter_status || 'Não informado'}</strong></div><p>{demo ? 'Sem leitura do inversor.' : 'Estado recebido da fonte de dados.'}</p><div className="technical-temperature">Temperatura <b>{number(current.temperature_c, 1)} °C</b></div></section></div></div>
 }
 
-export default function VisualMonitor({ night, setNight, current, totals, samples, demo }) {
+export default function VisualMonitor({ night, setNight, current, totals, samples, demo, emptyMode = false }) {
   const [view, setView] = useState('exterior')
   const [camera, setCamera] = useState('aerial')
   const [flow, setFlow] = useState(true)
@@ -125,7 +125,7 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
             <span className="visual-eyebrow">SISTEMA FOTOVOLTAICO</span><div className="capacity-display"><Sun size={27} /><strong>7,56 <span>kWp</span></strong></div>
             <div className="scene-info-row"><span>Módulos no telhado</span><b>12</b></div><div className="scene-info-row"><span>Inversor AUXSOL</span><b>6 kW</b></div>
             <div className="scene-info-row"><span>Residência</span><b>Duplex</b></div><div className="scene-info-row"><span>Quartos</span><b>3 · Superior</b></div>
-            <div className="scene-info-divider" /><span className="visual-eyebrow">ENERGIA NO PERÍODO</span><Balance totals={totals} /><div className="scene-source-note"><CircleDot size={13} />{demo ? 'Valores demonstrativos' : 'Última leitura da fonte'}</div>
+            <div className="scene-info-divider" /><span className="visual-eyebrow">ENERGIA NO PERÍODO</span><Balance totals={totals} /><div className="scene-source-note"><CircleDot size={13} />{emptyMode ? 'Sem leituras salvas' : demo ? 'Valores demonstrativos' : 'Última leitura da fonte'}</div>
           </>}
         </aside>
         <div className="visual-camera-tools">
@@ -138,6 +138,6 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
       </div>
       {energyCards}
     </>}
-    <div className="visual-footer"><span><CircleDot size={12} />{demo ? 'Prévia visual com dados de exemplo' : 'Leituras recebidas da fonte configurada'}</span><span>Modelo arquitetônico aproximado a partir das fotos</span></div>
+    <div className="visual-footer"><span><CircleDot size={12} />{emptyMode ? 'Indicadores zerados; nenhuma leitura salva' : demo ? 'Prévia visual com dados de exemplo' : 'Leituras recebidas da fonte configurada'}</span><span>Modelo arquitetônico aproximado a partir das fotos</span></div>
   </div>
 }

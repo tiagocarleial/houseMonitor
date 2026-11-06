@@ -78,7 +78,7 @@ export default function SmartHome() {
   const [connected, setConnected] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [devices, setDevices] = useState([])
-  const [demoDevices, setDemoDevices] = useState(() => readJson(DEVICES_KEY, EXAMPLES))
+  const [demoDevices, setDemoDevices] = useState(() => readJson(DEVICES_KEY, localStorage.getItem('solar-casa-empty-state') === '1' ? [] : EXAMPLES))
   const [demoStates, setDemoStates] = useState(savedDemo)
   const [rooms, setRooms] = useState(() => readJson(ROOMS_KEY, DEFAULT_ROOMS))
   const [room, setRoom] = useState('Todos')
