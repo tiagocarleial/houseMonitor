@@ -70,8 +70,9 @@
 .weather-week-empty{align-self:center;color:#8ba9b4;font-size:11px}
 @media(max-width:1050px){.topbar-line{padding:0 18px}.weather-topbar .weather-compact{padding:5px 18px}.weather-topbar .weather-compact-popover{left:18px}.weather-week-day{gap:4px}.weather-week-day>span{font-size:11px}}
 @media(max-width:700px){.topbar-line{padding:0 16px}.weather-topbar .weather-compact{grid-template-columns:auto 27px minmax(0,1fr);gap:5px;padding:5px 8px 5px 16px}.weather-topbar .weather-compact-popover{left:16px}.weather-week{grid-template-columns:repeat(7,84px);overflow-x:auto;scrollbar-width:thin}.weather-week-day{gap:4px}.weather-week-day strong{font-size:11px}}
+.topbar .top-left{flex:none}
 .topbar .top-right{flex:1;min-width:0;justify-content:flex-end;gap:10px}
-.topbar .weather-compact{display:flex;align-items:center;gap:9px;flex:1 1 820px;min-width:0;max-width:1100px;padding:5px 9px;background:#102735;border:1px solid #35515e;border-radius:9px}
+.topbar .weather-compact{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0;max-width:650px;padding:5px 8px;background:#102735;border:1px solid #35515e;border-radius:9px}
 .weather-date{display:flex;align-items:center;gap:6px;flex:none;padding-right:9px;border-right:1px solid #35515e;color:#a8bec6;font-size:10px;white-space:nowrap}
 .weather-date svg{color:#8caab5}
 .weather-gps-mark{flex:none;color:#80dcb1;margin-left:-2px}
@@ -82,8 +83,8 @@
 .topbar .weather-compact-values{flex:none;gap:6px}
 .topbar .weather-compact-place{max-width:90px}
 .topbar .weather-compact-edit{flex:none}
-.topbar .weather-week{display:flex;align-items:center;flex:1;min-width:0;width:auto;height:36px;overflow:hidden}
-.topbar .weather-week-day{flex:1 1 0;gap:5px;height:30px;padding:0 5px}
+.topbar .weather-week{display:flex;align-items:center;flex:1;min-width:0;width:auto;height:36px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.topbar .weather-week-day{flex:0 0 67px;gap:4px;height:30px;padding:0 3px}
 .topbar .weather-week-day>span{font-size:10px}
 .topbar .weather-week-day svg{width:16px;height:16px}
 .topbar .weather-week-day strong{font-size:11px}
@@ -91,3 +92,53 @@
 .topbar .weather-compact-popover{top:calc(100% + 8px);right:0;left:auto}
 @media(max-width:1150px){.topbar .top-right{gap:7px}.topbar .weather-compact{gap:6px;padding:4px 6px}.topbar .weather-compact-detail{display:none}.topbar .weather-compact-place{max-width:60px}.topbar .weather-week{overflow-x:auto;scrollbar-width:thin}.topbar .weather-week-day{flex:0 0 72px}}
 @media(max-width:700px){.app-shell.visual-layout .topbar{height:auto;min-height:57px;padding:7px 12px;align-items:flex-start}.app-shell.visual-layout .topbar .top-left{padding-top:5px}.topbar .top-right{flex:1;min-width:0}.topbar .weather-compact{display:grid;grid-template-columns:auto minmax(0,1fr) 26px;gap:5px;width:100%;padding:5px 6px}.topbar .weather-date{padding-right:5px;font-size:9px}.topbar .weather-compact-values{gap:4px}.topbar .weather-compact-place{display:none}.topbar .weather-compact-values strong{font-size:12px}.topbar .weather-compact-edit{width:24px;height:24px}.topbar .weather-week{grid-column:1/-1;grid-row:2;display:flex;height:28px;overflow-x:auto;scrollbar-width:thin}.topbar .weather-week-day{flex:0 0 66px;height:24px;justify-content:center}.topbar .weather-week-day>span{font-size:9px}.topbar .weather-week-day svg{width:14px;height:14px}.topbar .weather-week-day strong{font-size:10px}.topbar .weather-week-day strong small{font-size:9px}.topbar .weather-compact-popover{right:0;left:auto}}
+
+/* Keep the weekly forecast on its own row when the header gets narrow. */
+@media(max-width:800px){
+  .topbar,.app-shell.visual-layout .topbar{height:auto;min-height:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;padding:8px 12px}
+  .topbar .top-left{order:1;margin-right:auto;min-width:0}
+  .topbar .top-right{display:contents}
+  .topbar .top-right>.icon-button{order:2;flex:none}
+  .topbar .weather-compact{order:3;flex:0 0 100%;width:100%;max-width:none;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr) 26px;gap:6px;margin:0;padding:5px 8px}
+  .topbar .weather-week{grid-column:1/-1;grid-row:2;display:flex;width:100%;height:30px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+  .topbar .weather-week-day{flex:1 0 76px;min-width:0;height:26px}
+  .topbar .weather-compact-popover{top:calc(100% + 8px);left:0;right:auto;max-width:calc(100vw - 24px)}
+}
+@media(max-width:500px){
+  .topbar .top-left{gap:6px}
+  .topbar .breadcrumb{max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+  .topbar .top-right>.icon-button{width:31px;height:31px}
+  .topbar .weather-week-day{flex-basis:70px}
+}
+
+/* Three future days are visible at a time; arrows navigate the remaining days. */
+.topbar .weather-week{gap:4px;overflow:visible}
+.topbar .weather-week-track{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;min-width:0;height:100%;align-items:center}
+.topbar .weather-week-day{min-width:0;white-space:nowrap}
+.weather-week-arrow{display:grid;place-items:center;flex:none;width:22px;height:28px;padding:0;border:1px solid #35515e;border-radius:6px;background:#193644;color:#b9d6dc}
+.weather-week-arrow:hover,.weather-week-arrow:focus-visible{border-color:#75dcb0;color:#f0fff8}
+@media(max-width:1150px){
+  .topbar,.app-shell.visual-layout .topbar{height:auto;min-height:57px;padding-top:7px;padding-bottom:7px}
+  .topbar .weather-compact{display:grid;grid-template-columns:auto minmax(0,1fr) 26px}
+  .topbar .weather-week{grid-column:1/-1;grid-row:2;width:100%;height:31px}
+}
+@media(max-width:500px){
+  .topbar .weather-week{height:45px}
+  .topbar .weather-week-day{height:41px;flex-wrap:wrap;align-content:center;justify-content:center;gap:1px 4px}
+  .topbar .weather-week-day strong{width:100%;text-align:center}
+}
+
+/* Give each forecast its own rows so the temperatures never share space with the icon. */
+.app-shell.visual-layout .topbar{height:auto;min-height:57px}
+.topbar .weather-week{height:48px}
+.topbar .weather-week-track{align-items:stretch}
+.topbar .weather-week-day{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-content:center;column-gap:4px;row-gap:2px;height:46px;padding:2px 7px}
+.topbar .weather-week-day>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar .weather-week-day svg{grid-column:2;grid-row:1;align-self:center}
+.topbar .weather-week-day strong{grid-column:1/-1;display:flex;align-items:baseline;justify-content:center;gap:6px;min-width:0;white-space:nowrap;line-height:1.1}
+.topbar .weather-week-day strong span,.topbar .weather-week-day strong small{display:block;flex:none}
+@media(max-width:500px){
+  .topbar .weather-week{height:48px}
+  .topbar .weather-week-day{height:46px;padding:2px 4px}
+  .topbar .weather-week-day strong{gap:4px}
+}

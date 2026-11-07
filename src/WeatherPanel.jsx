@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { CalendarDays, Cloud, CloudRain, CloudSun, LocateFixed, MapPin, Search, Sun, Thermometer, Waves, Clock3, X } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Cloud, CloudRain, CloudSun, LocateFixed, MapPin, Search, Sun, Thermometer, Waves, Clock3, X } from 'lucide-react'
 import './weather.css'
 
 const STORAGE_KEY = 'solar-monitor-weather-location'
@@ -34,6 +34,7 @@ export default function WeatherPanel({ compact = false }) {
   const [updatedAt, setUpdatedAt] = useState(null)
   const [now, setNow] = useState(() => new Date())
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [forecastPage, setForecastPage] = useState(0)
 
   useEffect(() => {
     const syncLocation = () => {
@@ -127,6 +128,9 @@ export default function WeatherPanel({ compact = false }) {
   const CurrentIcon = currentCondition.icon
   const time = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: location?.timezone || undefined }).format(now)
   const days = weather?.daily?.time?.slice(0, 7) || []
+  const futureDays = days.slice(1)
+  const forecastPageCount = Math.ceil(futureDays.length / 3)
+  const visibleForecast = futureDays.slice(forecastPage * 3, forecastPage * 3 + 3)
 
   if (compact) return <div className="weather-compact">
     <div className="weather-date"><CalendarDays size={14} /><span>{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span></div>
@@ -138,8 +142,8 @@ export default function WeatherPanel({ compact = false }) {
       <span className="weather-compact-detail">{display(current?.shortwave_radiation)} W/m²</span>
     </div>
     <button className="weather-compact-edit" onClick={() => setSettingsOpen(!settingsOpen)} aria-expanded={settingsOpen} aria-label="Configurar clima" title="Configurar clima"><MapPin size={15} /></button>
-    <div className="weather-week" aria-label="Previsão do tempo para sete dias">
-      {days.length ? days.map((date, index) => { const info = condition(weather.daily.weather_code?.[index]); const Icon = info.icon; return <div className="weather-week-day" key={date} title={`${info.label} · Chuva ${display(weather.daily.precipitation_probability_max?.[index])}%`}><span>{index === 0 ? 'Hoje' : new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))}</span><Icon size={19} aria-label={info.label} /><strong>{display(weather.daily.temperature_2m_max?.[index])}° <small>{display(weather.daily.temperature_2m_min?.[index])}°</small></strong></div> }) : <span className="weather-week-empty">{location ? 'Carregando previsão da semana...' : 'Escolha uma cidade para ver a previsão da semana.'}</span>}
+    <div className="weather-week" aria-label="Previsão dos próximos seis dias">
+      {futureDays.length ? <><button className="weather-week-arrow" onClick={() => setForecastPage((page) => (page - 1 + forecastPageCount) % forecastPageCount)} aria-label="Ver três dias anteriores" title="Dias anteriores"><ChevronLeft size={16} /></button><div className="weather-week-track" aria-live="polite">{visibleForecast.map((date, offset) => { const index = forecastPage * 3 + offset + 1; const info = condition(weather.daily.weather_code?.[index]); const Icon = info.icon; return <div className="weather-week-day" key={date} title={`${info.label} · Chuva ${display(weather.daily.precipitation_probability_max?.[index])}%`}><span>{new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`))}</span><Icon size={19} aria-label={info.label} /><strong><span>{display(weather.daily.temperature_2m_max?.[index])}°</span><small>{display(weather.daily.temperature_2m_min?.[index])}°</small></strong></div> })}</div><button className="weather-week-arrow" onClick={() => setForecastPage((page) => (page + 1) % forecastPageCount)} aria-label="Ver próximos três dias" title="Próximos dias"><ChevronRight size={16} /></button></> : <span className="weather-week-empty">{location ? 'Carregando previsão da semana...' : 'Escolha uma cidade para ver a previsão da semana.'}</span>}
     </div>
     {settingsOpen && <div className="weather-compact-popover">
       <div className="weather-compact-popover-title"><div><strong>Clima e previsão</strong><span>{location ? `${location.name}${location.admin1 ? `, ${location.admin1}` : ''} · ${time}` : 'Escolha uma cidade'}</span></div><button className="weather-popover-close" onClick={() => setSettingsOpen(false)} aria-label="Fechar localização" title="Fechar"><X size={16} /></button></div>

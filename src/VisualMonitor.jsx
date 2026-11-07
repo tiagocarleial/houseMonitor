@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Box, ChevronRight, CircleDot, Home, Layers3, LocateFixed, Map, Moon, Move3D, Network, Pause, Play, RotateCcw, Sun, Zap } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Activity, ArrowDownLeft, ArrowUpRight, BarChart3, Box, ChevronRight, CircleDot, Home, Layers3, LocateFixed, Map, Maximize, Moon, Move3D, Network, Pause, Play, RotateCcw, Sun, Zap } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import ResidenceScene from './ResidenceScene.jsx'
 import { solarPosition, zoneParts, zonedDayMinuteToDate } from './solarPosition.js'
@@ -67,6 +67,7 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
   const [selectedMinute, setSelectedMinute] = useState(null)
   const [playing, setPlaying] = useState(false)
   const [gpsError, setGpsError] = useState('')
+  const immersiveRef = useRef(null)
   useEffect(() => {
     const onLocation = () => { setSolarLocation(savedSolarLocation()); setGpsError('') }
     window.addEventListener('solar-monitor-location-change', onLocation)
@@ -99,8 +100,12 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
   const roomNames = RESIDENCE_ROOMS[floor].map((item) => item.name)
   function selectView(id) { setView(id); if (id === 'flow') setFlow(true) }
   const energyCards = <div className="visual-energy-dock"><EnergyCard icon={Sun} label="Produção solar" power={sceneCurrent.solar_kw} energy={totals.solar} tone="solar" /><EnergyCard icon={Home} label="Consumo da casa" power={sceneCurrent.consumption_kw} energy={totals.consumption} tone="home" /><EnergyCard icon={ArrowDownLeft} label="Importação da rede" power={sceneCurrent.import_kw} energy={totals.import} tone="import" /><EnergyCard icon={ArrowUpRight} label="Exportação para rede" power={sceneCurrent.export_kw} energy={totals.export} tone="export" /></div>
+  function showOnlyScene() {
+    immersiveRef.current?.requestFullscreen?.()
+  }
   return <div className="visual-monitor">
     <div className="visual-view-tabs">{VIEWS.map(({ id, name, icon: Icon }, i) => <button key={id} aria-pressed={view === id} className={view === id ? 'active' : ''} onClick={() => selectView(id)}><Icon size={18} /><span>{name}</span><small>0{i + 1}</small></button>)}</div>
+    {!['dashboard', 'technical'].includes(view) && <button className="scene-fullscreen-entry" onClick={showOnlyScene} title="Exibir o monitoramento em tela cheia; pressione Esc para sair"><Maximize size={15} /> Monitoramento em tela cheia</button>}
     {view === 'dashboard' ? <div className={`visual-dashboard ${lightCharts ? 'light-charts' : ''}`}><div className="dashboard-display-title"><span>PAINEL DE ENERGIA</span><button onClick={() => setLightCharts(!lightCharts)}>{lightCharts ? <Moon size={16} /> : <Sun size={16} />}{lightCharts ? 'Tema escuro' : 'Tema claro'}</button></div>{energyCards}<div className="visual-chart-grid"><section className="visual-chart-main"><header><div><small>POTÊNCIA / kW</small><h3>Geração e consumo</h3></div><div className="visual-chart-legend"><span>● Solar</span><span>● Casa</span><span>● Importação</span><span>● Exportação</span></div></header><Chart samples={samples} light={lightCharts} /></section><section><header><div><small>ORIGEM DO CONSUMO</small><h3>Independência da rede</h3></div></header><Autonomy totals={totals} /></section><section className="visual-chart-main"><header><div><small>ENERGIA / kWh</small><h3>Balanço do período</h3></div></header><ResponsiveContainer width="100%" height={210}><BarChart data={[{ name: 'Solar', value: totals.solar, color: '#4cdda2' }, { name: 'Casa', value: totals.consumption, color: '#ffb05e' }, { name: 'Importação', value: totals.import, color: '#f87980' }, { name: 'Exportação', value: totals.export, color: '#77b7fb' }]}><CartesianGrid vertical={false} stroke={lightCharts ? '#e2e8ec' : '#273b47'} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#87a0b2' }} /><YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#87a0b2' }} /><Tooltip contentStyle={{ background: lightCharts ? '#fff' : '#102938', border: '1px solid #426477', borderRadius: 8 }} formatter={(value) => [`${number(value, 1)} kWh`, 'Energia']} /><Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={75}>{['#4cdda2', '#ffb05e', '#f87980', '#77b7fb'].map((color) => <Cell key={color} fill={color} />)}</Bar></BarChart></ResponsiveContainer></section><section><header><div><small>SISTEMA INSTALADO</small><h3>Sua usina solar</h3></div></header><div className="system-capacity"><Sun size={30} /><strong>7,56 <small>kWp</small></strong><span>12 módulos · Inversor de 6 kW</span></div></section></div></div> : view === 'technical' ? <TechnicalView current={current} totals={totals} demo={demo} /> : <>
       <div className="sun-timeline" aria-label="Percurso do sol em 24 horas">
         <button className="sun-gps" onClick={useGps} title="Atualizar coordenadas pelo GPS"><LocateFixed size={15} />GPS · {solarLocation?.name || 'Usar localização'}</button>
@@ -110,6 +115,7 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
         <button className="sun-now" onClick={() => { setPlaying(false); setSelectedMinute(null); setClockNow(new Date()) }} disabled={!solarLocation}>Agora</button>
         <span className="sun-angle">{sun ? `${sun.elevation < -0.833 ? 'Noite' : 'Sol'} · ${Math.round(sun.azimuth)}° az · ${Math.round(sun.elevation)}° alt` : gpsError || 'Selecione uma cidade ou use o GPS'}</span>
       </div>
+      <div ref={immersiveRef} className="scene-immersive">
       <div className={`visual-stage ${sceneNight ? 'night' : 'day'} ${inside ? 'inside' : ''}`}>
         <ResidenceScene key={sceneKey} night={sceneNight} sun={sun} current={sceneCurrent} labels={!inside && camera !== 'street' && camera !== 'rear'} showFlow={flow} cameraPreset={camera} mode={inside ? view : 'exterior'} focused={view === 'flow' || camera === 'street' || camera === 'rear'} floor={floor} selectedRoom={room} onRoomSelect={setRoom} />
         <div className="visual-stage-heading"><span><i />{inside ? 'PLANTA ILUSTRATIVA' : view === 'flow' ? 'FLUXO ANIMADO DE ENERGIA' : 'VISTA 3D DA RESIDÊNCIA'}</span><div className="scene-light-switch">{sun ? <span className="sun-scene-status">{sceneNight ? <Moon size={16} /> : <Sun size={16} />}{sceneNight ? 'Noite' : 'Dia'}</span> : <><button aria-pressed={!night} className={!night ? 'active' : ''} onClick={() => setNight(false)} aria-label="Iluminação diurna"><Sun size={16} />Dia</button><button aria-pressed={night} className={night ? 'active' : ''} onClick={() => setNight(true)} aria-label="Iluminação noturna"><Moon size={16} />Noite</button></>}</div></div>
@@ -137,6 +143,7 @@ export default function VisualMonitor({ night, setNight, current, totals, sample
         <div className="visual-compass"><span>N</span><i /><small>S</small></div>
       </div>
       {energyCards}
+      </div>
     </>}
     <div className="visual-footer"><span><CircleDot size={12} />{emptyMode ? 'Indicadores zerados; nenhuma leitura salva' : demo ? 'Prévia visual com dados de exemplo' : 'Leituras recebidas da fonte configurada'}</span><span>Modelo arquitetônico aproximado a partir das fotos</span></div>
   </div>

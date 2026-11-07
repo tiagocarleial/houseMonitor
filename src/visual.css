@@ -56,3 +56,21 @@
   .camera-presets button svg{width:12px;height:12px}
   .visual-camera-tools .visual-tool{width:30px;height:32px;flex:none}
 }
+
+.scene-fullscreen-entry{display:flex;align-items:center;gap:7px;margin:0 0 15px auto;padding:8px 11px;border:1px solid #416c72;border-radius:8px;background:#163b42;color:#c7f5df;font-size:11px;font-weight:700}
+.scene-fullscreen-entry:hover{border-color:#80dfb4;background:#205045}
+.scene-immersive:fullscreen{display:flex;flex-direction:column;width:100vw;height:100dvh;padding:12px;overflow:auto;background:#071b28}
+.scene-immersive:fullscreen .visual-stage{flex:1 0 auto;height:auto;min-height:min(420px,55dvh)}
+.scene-immersive:fullscreen .residence-scene{height:100%}
+.scene-immersive:fullscreen .visual-energy-dock{flex:none;margin-top:10px}
+@media(max-width:920px){
+  .scene-immersive:fullscreen .scene-information .scene-info-divider,.scene-immersive:fullscreen .scene-information .visual-balance,.scene-immersive:fullscreen .scene-information .scene-source-note,.scene-immersive:fullscreen .scene-information>.visual-eyebrow:nth-of-type(2){display:grid}
+  .scene-immersive:fullscreen .scene-information .scene-info-divider{display:block}
+  .scene-immersive:fullscreen .scene-information .scene-source-note{display:flex}
+}
+@media(max-width:700px){
+  .scene-immersive:fullscreen .visual-stage.inside{height:auto}
+  .scene-immersive:fullscreen .visual-stage.inside .residence-scene{height:100%}
+  .scene-immersive:fullscreen .scene-information{display:block;top:auto;bottom:65px;right:8px;width:min(180px,48vw);max-height:calc(100% - 130px);overflow:auto;padding:10px}
+  .scene-immersive:fullscreen .visual-stage.inside .scene-information.room-information{display:grid;top:auto;bottom:65px;left:auto;right:8px;width:min(180px,48vw);max-height:calc(100% - 130px)}
+}
