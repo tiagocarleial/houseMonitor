@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, CalendarDays,
   Check, ChevronDown, CircleHelp, CloudSun, Download, FileUp, Gauge, Home,
@@ -12,6 +12,7 @@ import WeatherPanel from './WeatherPanel.jsx'
 import SmartHome from './SmartHome.jsx'
 import MeterReadings from './MeterReadings.jsx'
 import { loadMeterReadings, meterIntervals, METER_KEY } from './meterData.js'
+import { lowProductionAlert } from './productionAlerts.js'
 
 const fmt = (value, decimals = 2) => value == null ? '—' : Number(value).toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 const shown = (value, decimals = 2) => value == null ? '—' : fmt(value, decimals)
@@ -147,7 +148,11 @@ export default function App() {
   const [meterReadings, setMeterReadings] = useState(loadMeterReadings)
   const [useReal, setUseReal] = useState(() => readSavedSamples().length > 0)
   const [sourceKind, setSourceKind] = useState(() => localStorage.getItem('solar-monitor-source') || 'csv')
-  const [lastSync, setLastSync] = useState(null)
+  const [lastSync, setLastSync] = useState(() => {
+    const saved = localStorage.getItem('solar-monitor-last-sync')
+    return saved && Number.isFinite(Date.parse(saved)) ? new Date(saved) : null
+  })
+  const syncInProgress = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState('idle')
   const [endpoint, setEndpoint] = useState(() => localStorage.getItem('solar-monitor-endpoint') || '')
   const [error, setError] = useState('')
@@ -157,8 +162,29 @@ export default function App() {
   const [fullScreen, setFullScreen] = useState(false)
   const [sunHours, setSunHours] = useState(4.5)
   const [loss, setLoss] = useState(20)
+  const [alertThreshold, setAlertThreshold] = useState(() => {
+    const saved = localStorage.getItem('solar-monitor-production-threshold')
+    const value = saved === null ? 1.5 : Number(saved)
+    return Number.isFinite(value) && value >= 0 && value <= 6 ? value : 1.5
+  })
+  const [alertClock, setAlertClock] = useState(Date.now)
+  const [alertZone, setAlertZone] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('solar-monitor-weather-location'))?.timezone || undefined } catch { return undefined }
+  })
+  useEffect(() => {
+    const tick = () => {
+      setAlertClock(Date.now())
+      try { setAlertZone(JSON.parse(localStorage.getItem('solar-monitor-weather-location'))?.timezone || undefined) } catch { setAlertZone(undefined) }
+    }
+    const timer = setInterval(tick, 30000)
+    window.addEventListener('solar-monitor-location-change', tick)
+    window.addEventListener('storage', tick)
+    return () => { clearInterval(timer); window.removeEventListener('solar-monitor-location-change', tick); window.removeEventListener('storage', tick) }
+  }, [])
+  useEffect(() => { localStorage.setItem('solar-monitor-production-threshold', String(alertThreshold)) }, [alertThreshold])
   const samples = useReal && realSamples.length ? realSamples : EMPTY_SAMPLES
   const demo = !useReal || !realSamples.length
+  const productionAlert = !demo && connectionStatus !== 'error' ? lowProductionAlert(realSamples, { now: alertClock, threshold: alertThreshold, timeZone: alertZone }) : null
   const meterHistory = useMemo(() => meterIntervals(meterReadings), [meterReadings])
   const latestMeterBalance = meterHistory.at(-1)
   const current = demo ? samples[night ? 20 : 12] : samples[samples.length - 1]
@@ -202,36 +228,48 @@ export default function App() {
     else document.documentElement.requestFullscreen()
   }
 
-  function importSamples(data, parseError, source = 'csv') {
+  function importSamples(data, parseError, source = 'csv', background = false) {
     if (parseError) { setError(parseError); return }
     if (!data?.length) { setError('Nenhuma medição encontrada.'); return }
-    setRealSamples(data)
+    // Sources may return newest first. Chronological order is required for
+    // both the current reading and the integration of energy over time.
+    const ordered = data.every((row) => Number.isFinite(Date.parse(row.timestamp)))
+      ? [...new Map(data.map((row) => [Date.parse(row.timestamp), row])).values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+      : data
+    setRealSamples(ordered)
     setUseReal(true)
     setSourceKind(source)
     setConnectionStatus(source === 'wifi' ? 'connected' : 'imported')
-    setLastSync(new Date())
+    const syncedAt = new Date()
+    setLastSync(syncedAt)
+    localStorage.setItem('solar-monitor-last-sync', syncedAt.toISOString())
     setError('')
-    setShowModal(false)
+    if (!background) setShowModal(false)
   }
-  async function refresh() {
+  async function refresh(background = false) {
+    if (syncInProgress.current) return
+    syncInProgress.current = true
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
     setBusy(true); setError('')
     try {
       const url = new URL(endpoint)
       const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.endsWith('.local') || /^192\.168\.\d{1,3}\.\d{1,3}$/.test(url.hostname) || /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(url.hostname) || /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(url.hostname)
       if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) throw new Error('Use HTTPS ou um endereço HTTP da rede local.')
       if (url.username || url.password) throw new Error('Não coloque usuário ou senha na URL.')
-      const response = await fetch(url.toString(), { cache: 'no-store' })
+      const response = await fetch(url.toString(), { cache: 'no-store', signal: controller.signal })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const json = await response.json()
       const rows = Array.isArray(json) ? json : json.samples
       if (!Array.isArray(rows)) throw new Error('O JSON precisa conter uma lista samples.')
-      importSamples(rows.map(normalizeSample), null, 'wifi')
-    } catch (err) { setConnectionStatus('error'); setError(err.message || 'Não foi possível carregar os dados.') }
-    finally { setBusy(false) }
+      if (!rows.length) throw new Error('A fonte não retornou medições. As últimas leituras foram mantidas.')
+      importSamples(rows.map(normalizeSample), null, 'wifi', background === true)
+    } catch (err) { setConnectionStatus('error'); setError(err.name === 'AbortError' ? 'A fonte não respondeu em 15 segundos. Tente novamente.' : err.message || 'Não foi possível carregar os dados.') }
+    finally { clearTimeout(timeout); syncInProgress.current = false; setBusy(false) }
   }
   useEffect(() => {
     if (!endpoint || !useReal || sourceKind !== 'wifi') return undefined
-    const timer = setInterval(refresh, 60000)
+    const timer = setInterval(() => refresh(true), 60000)
     return () => clearInterval(timer)
   }, [endpoint, useReal, sourceKind])
 
@@ -239,7 +277,7 @@ export default function App() {
   return <div className={`app-shell ${mode === 'real' && section === 'Visão geral' ? 'visual-layout' : ''} ${siteTheme === 'light' ? 'site-light' : ''}`}>
     {mobileNav && <button className="nav-backdrop" aria-label="Fechar menu" onClick={() => setMobileNav(false)} />}
     <aside className={`sidebar ${mobileNav ? 'open' : ''}`}>
-      <div className="brand"><div className="brand-mark"><Sun size={24} /></div><div><strong>SOLAR<span>CASA</span></strong><small>ENERGY STUDIO</small></div></div>
+      <div className="brand" aria-label="Solar Casa — energia e casa conectadas"><div className="brand-mark"><img src="/solar-casa.svg" width="42" height="42" alt="" /></div><div><strong>SOLAR<span>CASA</span></strong><small>ENERGIA & CASA CONECTADAS</small></div></div>
       <span className="sidebar-label">MENU PRINCIPAL</span>
       <nav>{navItems.map(({ label, icon: Icon }) => <button key={label} aria-label={label} title={label} className={section === label && mode === 'real' ? 'nav-active' : ''} onClick={() => selectSection(label)}><Icon size={19} />{label}</button>)}</nav>
       <div className="sidebar-bottom"><div className="sidebar-system"><span className="live-dot" /><div><strong>Seu sistema</strong><small>12 módulos · 7,56 kWp</small></div></div><button className="sidebar-connect" aria-label="Fonte de dados" onClick={() => setShowModal(true)}><Settings2 size={18} /> Fonte de dados</button><button className="sidebar-connect" aria-label="Zerar todos os dados do site" onClick={resetSiteData}><RotateCcw size={18} /> Zerar todos os dados</button></div>
@@ -250,12 +288,17 @@ export default function App() {
 
       <div className="page-content">
         <div className="page-heading"><div><div className="eyebrow">{section === 'Casa inteligente' ? 'AUTOMAÇÃO RESIDENCIAL' : 'MONITORAMENTO RESIDENCIAL'}</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div></div>
-        {section !== 'Casa inteligente' && <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button></div>}
+        {section !== 'Casa inteligente' && <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button>{mode === 'real' && section === 'Visão geral' && <><div className="overview-connection">
+          <span className={`overview-status ${connectionStatus === 'error' ? 'failed' : demo ? 'waiting' : ''}`} title={error || (lastSync ? `Última sincronização: ${new Date(lastSync).toLocaleString('pt-BR')}` : undefined)}><Info size={13} />{connectionStatus === 'error' ? 'Falha na conexão' : demo ? 'Sem leituras' : sourceKind === 'wifi' ? 'Fonte Wi-Fi' : 'CSV importado'}</span>
+          <button className="overview-connect-button" disabled={busy} onClick={!demo && sourceKind === 'wifi' ? () => refresh(true) : () => setShowModal(true)}><RotateCcw size={14} />{busy ? 'Atualizando...' : !demo && sourceKind === 'wifi' ? 'Atualizar' : 'Conectar dados'}</button>
+          {connectionStatus === 'error' && error && <small className="overview-connection-error" role="status">{error}</small>}
+        </div><button className="scene-fullscreen-entry" onClick={() => document.querySelector('.scene-immersive')?.requestFullscreen?.()} title="Exibir o monitoramento em tela cheia; pressione Esc para sair"><Maximize size={15} /> Tela cheia</button></>}</div>}
 
         {section === 'Casa inteligente' ? <SmartHome /> : mode === 'real' ? <>
+          {productionAlert && section === 'Visão geral' && <div className="production-notice" role="status"><Sun size={18} /><span><strong>{productionAlert.title}</strong><small>{productionAlert.detail}</small></span><button onClick={() => selectSection('Alertas')}>Ver alerta <ArrowRight size={14} /></button></div>}
           {demo && section !== 'Visão geral' && section !== 'Leituras Enel' && <div className="notice"><Info size={17} /><span>Sem leituras da fonte automática. Os indicadores de potência estão zerados até você importar ou conectar dados.</span><button onClick={() => setShowModal(true)}>Configurar <ArrowRight size={14} /></button></div>}
           {!demo && current.consumption_kw == null && section !== 'Leituras Enel' && <div className="detail-info data-gap"><Info size={17} /> A fonte não informou potência instantânea da casa. Registre importação e exportação em Leituras Enel para calcular o consumo em kWh por intervalo.</div>}
-          {section === 'Leituras Enel' ? <MeterReadings readings={meterReadings} onChange={updateMeterReadings} /> : <>{(section === 'Visão geral' || section === 'Energia') && latestMeterBalance && <div className="meter-summary detail-panel"><div><span className="eyebrow">ÚLTIMO BALANÇO ENEL</span><h2>{new Date(latestMeterBalance.start).toLocaleString('pt-BR')} → {new Date(latestMeterBalance.end).toLocaleString('pt-BR')}</h2><p>Recebido: {fmt(latestMeterBalance.imported)} kWh · Enviado: {fmt(latestMeterBalance.exported)} kWh · Saldo do intervalo: {latestMeterBalance.gridBalance > 0 ? '+' : ''}{fmt(latestMeterBalance.gridBalance)} kWh · Produção: {shown(latestMeterBalance.solar)} kWh · Consumo: {shown(latestMeterBalance.consumption)} kWh</p><p><strong>Saldo acumulado desde a primeira leitura: {latestMeterBalance.cumulativeBalance > 0 ? '+' : ''}{fmt(latestMeterBalance.cumulativeBalance)} kWh</strong></p>{latestMeterBalance.solar == null && <small>Consumo pendente: informe a produção AUXSOL desse mesmo intervalo.</small>}</div><button className="detail-action" onClick={() => selectSection('Leituras Enel')}>Ver leituras <ArrowRight size={15} /></button></div>}{section === 'Visão geral' ? <VisualMonitor night={night} setNight={setNight} current={current} totals={totals} samples={samples} demo={demo} emptyMode={demo} onConnect={() => setShowModal(true)} /> : <MonitoringDetails section={section} demo={demo} samples={samples} current={current} totals={totals} endpoint={endpoint} sourceKind={sourceKind} connectionStatus={connectionStatus} lastSync={lastSync} onConnect={() => setShowModal(true)} />}</>}
+          {section === 'Leituras Enel' ? <MeterReadings readings={meterReadings} onChange={updateMeterReadings} /> : <>{(section === 'Visão geral' || section === 'Energia') && latestMeterBalance && <div className="meter-summary detail-panel"><div><span className="eyebrow">ÚLTIMO BALANÇO ENEL</span><h2>{new Date(latestMeterBalance.start).toLocaleString('pt-BR')} → {new Date(latestMeterBalance.end).toLocaleString('pt-BR')}</h2><p>Recebido: {fmt(latestMeterBalance.imported)} kWh · Enviado: {fmt(latestMeterBalance.exported)} kWh · Saldo do intervalo: {latestMeterBalance.gridBalance > 0 ? '+' : ''}{fmt(latestMeterBalance.gridBalance)} kWh · Produção: {shown(latestMeterBalance.solar)} kWh · Consumo: {shown(latestMeterBalance.consumption)} kWh</p><p><strong>Saldo acumulado desde a primeira leitura: {latestMeterBalance.cumulativeBalance > 0 ? '+' : ''}{fmt(latestMeterBalance.cumulativeBalance)} kWh</strong></p>{latestMeterBalance.solar == null && <small>Consumo pendente: informe a produção AUXSOL desse mesmo intervalo.</small>}</div><button className="detail-action" onClick={() => selectSection('Leituras Enel')}>Ver leituras <ArrowRight size={15} /></button></div>}{section === 'Visão geral' ? <VisualMonitor night={night} setNight={setNight} current={current} totals={totals} samples={samples} demo={demo} emptyMode={demo} connectionStatus={connectionStatus} lastSync={lastSync} sourceKind={sourceKind} busy={busy} error={error} onRefresh={() => refresh(true)} onConnect={() => setShowModal(true)} /> : <MonitoringDetails productionAlert={productionAlert} alertThreshold={alertThreshold} onThresholdChange={setAlertThreshold} alertZone={alertZone} section={section} demo={demo} samples={samples} current={current} totals={totals} endpoint={endpoint} sourceKind={sourceKind} connectionStatus={connectionStatus} lastSync={lastSync} onConnect={() => setShowModal(true)} />}</>}
         </> : <>
           <div className="sim-intro"><div><Sun size={18} /> Dimensionamento inicial: 12 módulos × 630 W = 7,56 kWp</div><span>Estimativa simplificada</span></div>
           <div className="sim-layout"><div className="scene-card sim-scene"><div className="card-heading"><div><span className="eyebrow">PROJETO INTERATIVO</span><h2>Telhado da sua casa</h2></div><span className="card-pill"><Layers3 size={16} /> Vista 3D</span></div><HouseView night={night} setNight={setNight} panelCount={panelCount} setPanelCount={setPanelCount} simulation current={current} showFlow={showFlow} setShowFlow={setShowFlow} /></div><div className="sim-panel"><div className="card-heading"><div><span className="eyebrow">CONFIGURAÇÃO DO SISTEMA</span><h2>Placas solares</h2></div><SlidersHorizontal size={20} className="heading-icon" /></div><div className="sim-power"><span>Potência simulada</span><strong>{fmt(installedKwp)} <small>kWp</small></strong><div>{panelCount} de 12 módulos posicionados</div></div><div className="control-block"><div className="control-label"><span>Quantidade de módulos</span><strong>{panelCount}</strong></div><div className="quantity-control"><button onClick={() => setPanelCount(clamp(panelCount - 1, 0, 12))} aria-label="Remover módulo"><Minus size={20} /></button><input type="range" min="0" max="12" value={panelCount} onChange={(event) => setPanelCount(Number(event.target.value))} aria-label="Quantidade de módulos" /><button onClick={() => setPanelCount(clamp(panelCount + 1, 0, 12))} aria-label="Adicionar módulo"><Plus size={20} /></button></div><small>Cada módulo acrescenta 630 Wp ao projeto.</small></div><div className="control-block"><div className="control-label"><span>Horas de sol pleno por dia</span><strong>{fmt(sunHours, 1)} h</strong></div><input type="range" min="2" max="7" step="0.1" value={sunHours} onChange={(event) => setSunHours(Number(event.target.value))} /><small>Ajuste conforme a média da sua localidade.</small></div><div className="control-block"><div className="control-label"><span>Perdas estimadas</span><strong>{loss}%</strong></div><input type="range" min="0" max="40" step="1" value={loss} onChange={(event) => setLoss(Number(event.target.value))} /><small>Inclui temperatura, cabos, sujeira e outras perdas.</small></div><div className="estimate"><Sun size={22} /><div><span>Geração diária estimada</span><strong>{fmt(expectedDaily, 1)} kWh</strong></div></div><button className="reset-button" onClick={() => { setPanelCount(12); setSunHours(4.5); setLoss(20) }}><RotateCcw size={16} /> Restaurar projeto inicial</button></div></div>

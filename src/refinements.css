@@ -1,0 +1,134 @@
+/* Shared finishing layer: navigation, readable metrics and overview hierarchy. */
+.production-notice { display: flex; align-items: center; gap: 12px; padding: 12px 15px; margin-bottom: 12px; border: 1px solid #79613b; border-radius: 10px; background: #322c20; color: #f0d49b; }
+.production-notice > svg { flex: none; }
+.production-notice > span { flex: 1; min-width: 0; }
+.production-notice strong { display: block; font-size: 12px; }
+.production-notice small { display: block; font-size: 11px; line-height: 1.5; margin-top: 3px; }
+.production-notice button { display: flex; align-items: center; gap: 5px; flex: none; background: transparent; color: inherit; border: 0; font-size: 11px; }
+.production-threshold { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
+.production-threshold select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; }
+.site-light .production-notice { background: #fff4de; border-color: #dec99b; color: #775620; }
+@media(max-width:700px) { .production-notice { flex-wrap: wrap; } }
+.sidebar .brand { gap: 9px; margin-left: 3px; margin-right: 0; }
+.sidebar .brand-mark { width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: none; box-shadow: none; }
+.brand-mark img { display: block; width: 100%; height: 100%; }
+.sidebar .brand strong { font-size: 16px; letter-spacing: -.04em; line-height: 1.3; }
+.sidebar .brand strong span { font-weight: 500; margin-left: 1px; }
+.sidebar .brand small { font-size: 7px; letter-spacing: .065em; margin-top: 5px; white-space: nowrap; }
+@media (min-width: 701px) and (max-width: 920px) { .sidebar .brand { margin-left: 0; justify-content: center; } }
+.app-shell { --surface: #102635; --border: #2a4352; --muted: #a0b7c4; }
+.top-right { gap: 10px; }
+.icon-button { width: 38px; height: 38px; border-radius: 10px; }
+button:focus-visible, input:focus-visible { outline: 2px solid #72e6b5; outline-offset: 4px; }
+.sidebar nav button { position: relative; min-height: 44px; }
+.sidebar nav button.nav-active::before { content: ''; position: absolute; left: -1px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: #6de8b3; }
+.sidebar nav button svg { flex-shrink: 0; }
+.sidebar-system small { line-height: 1.6; }
+.sidebar-bottom .sidebar-connect:last-child { color: #9baebb; font-size: 11px; }
+.overview-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 0; margin-bottom: 14px; }
+.overview-heading h1 { margin: 3px 0; font: 800 25px/1.2 Manrope, sans-serif; letter-spacing: -.045em; color: #f1f7fa; }
+.overview-heading p { margin: 0; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.overview-connection { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; max-width: 400px; }
+.overview-connection > small { width: 100%; text-align: right; font-size: 10px; color: var(--muted); }
+.overview-connect-button { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: inherit; padding: 8px 10px; font-size: 11px; }
+.overview-connect-button:hover { border-color: #66b696; }
+.overview-status.failed { background: #432a30; border-color: #94505d; color: #ffd0d4; }
+.overview-connection > .overview-connection-error { color: #e6969d; }
+@media(max-width:700px) { .overview-connection { justify-content: flex-start; max-width: 100%; } .overview-connection > small { text-align: left; } }
+.overview-status { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 9px 12px; border: 1px solid #326652; border-radius: 20px; background: #16382e; color: #a0efc9; font-size: 11px; }
+.overview-status.waiting { background: #302d23; border-color: #675b3e; color: #e8ce94; }
+.visual-view-tabs { gap: 6px; padding: 5px; background: #071a27; border: 1px solid var(--border); border-radius: 14px; }
+.visual-view-tabs button { min-height: 48px; padding: 11px 12px; border-color: transparent; background: transparent; font-size: 12px; }
+.visual-view-tabs button small { display: none; }
+.visual-view-tabs button.active { border-color: #407b68; box-shadow: 0 2px 8px #0002; }
+.scene-fullscreen-entry { min-height: 36px; font-size: 11px; }
+.sun-timeline { min-height: 48px; padding: 8px 12px; background: #102635; border-color: var(--border); border-radius: 12px; }
+.sun-timeline button { min-height: 32px; }
+.visual-stage { border-radius: 18px; box-shadow: 0 16px 40px #020e1a30; }
+.visual-energy-card { position: relative; min-width: 0; min-height: 116px; border-radius: 14px; padding: 20px 16px; gap: 12px; background: #102635; box-shadow: 0 6px 20px #020e1a1a; border-top: 2px solid currentColor; }
+.visual-energy-card > div { min-width: 0; }
+.visual-energy-card small { font-size: 12px; line-height: 1.4; color: #bdced7; }
+.visual-energy-card strong { font-size: clamp(22px, 2vw, 30px); line-height: 1.3; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.visual-energy-card em { font-size: 13px; color: #9eb5c3; font-weight: 500; }
+.visual-energy-card div > span { font-size: 11px; line-height: 1.5; color: #9ab2c0; }
+.visual-energy-icon { width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, currentColor 8%, transparent); box-shadow: none; border-color: color-mix(in srgb, currentColor 25%, transparent); }
+.visual-footer { font-size: 10px; line-height: 1.6; color: #91abba; }
+.detail-value strong, .metric-copy strong, .reading-table td { font-variant-numeric: tabular-nums; }
+.detail-value span, .metric-copy span { font-size: 12px; }
+.detail-value small, .device-row, .reading-table { font-size: 12px; }
+.reading-table th, .reading-table td { padding: 14px 12px; }
+.reading-table tbody tr:hover { background: #9bbcd008; }
+.site-light { --surface: #fff; --border: #d5e1e6; --muted: #5c7482; }
+.app-shell.site-light.visual-layout .main-content { background: #eef3f6; }
+.site-light .overview-heading h1 { color: #203746; }
+.site-light .overview-status { background: #e7f5ed; border-color: #b8ddc9; color: #24694a; }
+.site-light .overview-status.waiting { background: #fff5df; border-color: #e8d6ab; color: #7b6129; }
+.site-light .visual-view-tabs { background: #e4ecf0; }
+.site-light .visual-view-tabs button { color: #526e7c; }
+.site-light .visual-view-tabs button:hover { background: #f7fafb; color: #203746; }
+.site-light .visual-view-tabs button.active { background: #fff; border-color: #9acbb4; color: #216b4c; }
+.site-light .sun-timeline { background: #fff; color: #526e7c; }
+.site-light .sun-timeline button, .site-light .scene-fullscreen-entry { background: #f3f8f6; color: #306c53; border-color: #c6ddd2; }
+.site-light .sun-time { color: #88671d; }
+.site-light .sun-angle { color: #5c7482; }
+.site-light .visual-energy-card { background: #fff; border-color: #d5e1e6; border-top-color: currentColor; }
+.site-light .visual-energy-card.solar { color: #22875d; }
+.site-light .visual-energy-card.home { color: #b77825; }
+.site-light .visual-energy-card.import { color: #cb626c; }
+.site-light .visual-energy-card.export { color: #4d85bc; }
+.site-light .visual-energy-card strong { color: #203746; }
+.site-light .visual-energy-card small, .site-light .visual-energy-card em, .site-light .visual-energy-card div > span, .site-light .visual-footer { color: #5c7482; }
+@media (min-width: 1251px) { .visual-stage { height: clamp(440px, calc(100dvh - 490px), 760px); } }
+@media (min-width: 701px) and (max-width: 920px) { .sidebar-bottom .sidebar-connect:last-child { font-size: 0; } }
+@media (max-width: 700px) {
+  .overview-heading { align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .overview-heading h1 { font-size: 23px; }
+  .overview-heading p { font-size: 12px; }
+  .top-right { gap: 5px; }
+  .topbar .icon-button { width: 32px; height: 34px; }
+  .visual-view-tabs button { min-height: 44px; padding: 8px 5px; font-size: 10px; justify-content: center; }
+  .visual-view-tabs button span { min-width: 0; }
+  .visual-energy-card { min-height: 112px; padding: 14px 10px; gap: 8px; }
+  .visual-energy-card small { font-size: 10px; }
+  .visual-energy-card strong { font-size: 22px; }
+  .visual-energy-card div > span { font-size: 10px; }
+  .visual-energy-icon { width: 30px; height: 34px; border-radius: 9px; }
+  .visual-energy-icon svg { width: 18px; }
+  .visual-footer { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .visual-footer > span:last-child { max-width: none; text-align: left; }
+}
+
+.tabbar .scene-fullscreen-entry { margin: 0 0 0 auto; align-self: center; white-space: nowrap; }
+.app-shell.visual-layout .page-content { padding-top: 14px; }
+.app-shell.visual-layout .tabbar { align-items: center; gap: 16px; margin-bottom: 12px; padding-bottom: 8px; flex-wrap: wrap; }
+.app-shell.visual-layout .tabbar > button { padding: 7px 5px; font-size: 12px; }
+.app-shell.visual-layout .tabbar .scene-fullscreen-entry { margin-left: 0; font-size: 11px; }
+.tabbar .overview-connection { margin-left: auto; max-width: none; gap: 6px; }
+.tabbar .overview-connection > small { display: none; }
+.tabbar .overview-connection > .overview-connection-error { display: block; max-width: 280px; }
+.tabbar .overview-status { font-size: 10px; padding: 6px 8px; }
+.tabbar .overview-connect-button { min-height: 30px; padding: 6px 8px; font-size: 10px; }
+.visual-view-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; margin-bottom: 12px; padding: 3px; border-radius: 10px; scrollbar-width: thin; }
+.visual-view-tabs button { flex: 1 0 auto; min-height: 36px; padding: 7px 10px; font-size: 11px; justify-content: center; white-space: nowrap; }
+.visual-view-tabs button svg { width: 15px; height: 15px; }
+.topbar .weather-compact { display: flex; flex: none; width: auto; max-width: none; gap: 7px; padding: 4px 7px; }
+.topbar .weather-compact-detail, .topbar .weather-date { display: none; }
+.topbar .weather-compact-popover .weather-week { display: flex; margin-top: 12px; width: 100%; }
+.app-shell.visual-layout .topbar { min-height: 50px; padding-top: 5px; padding-bottom: 5px; flex-wrap: nowrap; }
+.app-shell.visual-layout .topbar .top-right { display: flex; flex: 0 1 auto; min-width: 0; gap: 6px; }
+@media(max-width:800px) {
+  .app-shell.visual-layout .topbar .weather-compact { order: initial; flex: none; width: auto; }
+  .app-shell.visual-layout .topbar .top-left { padding-top: 0; }
+  .topbar .weather-compact-place, .topbar .weather-gps-mark { display: none; }
+  .app-shell.visual-layout .topbar .breadcrumb { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media(max-width:700px) {
+  .app-shell.visual-layout .tabbar { gap: 8px; }
+  .tabbar .overview-connection { justify-content: flex-end; }
+  .tabbar .overview-status { display: none; }
+  .app-shell.visual-layout .tabbar .scene-fullscreen-entry { font-size: 0; padding: 0; }
+  .app-shell.visual-layout .topbar .icon-button { width: 28px; height: 30px; }
+  .app-shell.visual-layout .topbar .help { display: none; }
+  .visual-view-tabs button { min-height: 40px; }
+}
+@media (max-width: 700px) { .tabbar .scene-fullscreen-entry { width: 38px; height: 38px; min-width: 38px; margin-left: auto; padding: 0; justify-content: center; font-size: 0; } .tabbar .scene-fullscreen-entry svg { width: 16px; height: 16px; } }

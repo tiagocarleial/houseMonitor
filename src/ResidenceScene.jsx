@@ -7,7 +7,7 @@ import { RESIDENCE_ROOMS } from './residenceLayout.js'
 
 const PANELS = Array.from({ length: 12 }, (_, i) => ({ index: i, side: i < 6 ? 'front' : 'rear', x: (i % 3 - 1) * 1.28, z: (Math.floor((i % 6) / 3) - .5) * 1.88 }))
 function Block({ at, size, color = '#eee4cc', map, material = {}, rotation }) {
-  return <mesh position={at} rotation={rotation} castShadow receiveShadow><boxGeometry args={size} /><meshStandardMaterial color={color} map={map} roughness={.83} {...material} /></mesh>
+  return <mesh position={at} rotation={rotation} castShadow receiveShadow><boxGeometry args={size} /><meshStandardMaterial color={color} map={map} bumpMap={map} bumpScale={map ? .025 : 0} roughness={.83} {...material} /></mesh>
 }
 function SoftBlock({ at, size, color, radius = .08, material = {} }) {
   return <RoundedBox position={at} args={size} radius={radius} smoothness={3} castShadow receiveShadow><meshStandardMaterial color={color} roughness={.6} {...material} /></RoundedBox>
@@ -38,16 +38,23 @@ function Tree({ at, scale = 1, cypress = false }) {
 
 function PanelCells() {
   const cells = useRef()
+  const conductors = useRef()
   useEffect(() => {
     const transform = new THREE.Object3D()
     for (let row = 0; row < 6; row++) for (let col = 0; col < 4; col++) {
       transform.position.set((col - 1.5) * .255, .087, (row - 2.5) * .23)
       transform.updateMatrix()
       cells.current.setMatrixAt(row * 4 + col, transform.matrix)
+      for (let wire = 0; wire < 3; wire++) {
+        transform.position.set((col - 1.5) * .255 + (wire - 1) * .065, .091, (row - 2.5) * .23)
+        transform.updateMatrix()
+        conductors.current.setMatrixAt((row * 4 + col) * 3 + wire, transform.matrix)
+      }
     }
     cells.current.instanceMatrix.needsUpdate = true
+    conductors.current.instanceMatrix.needsUpdate = true
   }, [])
-  return <instancedMesh ref={cells} args={[null, null, 24]}><boxGeometry args={[.243, .004, .219]} /><meshStandardMaterial color="#173952" roughness={.25} metalness={.4} /></instancedMesh>
+  return <><instancedMesh ref={cells} args={[null, null, 24]}><boxGeometry args={[.243, .004, .219]} /><meshStandardMaterial color="#173952" roughness={.25} metalness={.4} /></instancedMesh><instancedMesh ref={conductors} args={[null, null, 72]}><boxGeometry args={[.002, .001, .213]} /><meshStandardMaterial color="#94afbc" metalness={.65} roughness={.4} /></instancedMesh></>
 }
 
 function Window({ at, width = 1.3, height = 1.1, night, rotation = 0 }) {
@@ -62,6 +69,7 @@ function Window({ at, width = 1.3, height = 1.1, night, rotation = 0 }) {
 
 function Module({ at, index, active, simulation, onToggle }) {
   return <group position={at} onClick={simulation ? (e) => { e.stopPropagation(); onToggle(index) } : undefined}>
+    {active && [-.46, .46].map((x) => <Block key={x} at={[x, -.035, 0]} size={[.035, .08, 1.55]} color="#9aa8ad" material={{ metalness: .8, roughness: .35 }} />)}
     <Block at={[0, .035, 0]} size={[1.09, .065, 1.46]} color={active ? '#9daeb3' : '#dac193'} material={{ transparent: !active, opacity: active ? 1 : .25 }} />
     <Block at={[0, .075, 0]} size={[1.035, .016, 1.405]} color={active ? '#102e47' : '#b9a277'} material={{ metalness: .48, roughness: .22, transparent: !active, opacity: active ? 1 : .2 }} />
     {active && <PanelCells />}
@@ -111,6 +119,78 @@ function TiledRoof({ at, width, depth, slope = 0, eave = 1, maps, children }) {
   </group>
 }
 
+function Ringneck({ at, rotation = 0, color = '#76ae4c' }) {
+  return <group position={at} rotation={[0, rotation, 0]}>
+    <mesh castShadow scale={[.065, .12, .07]}><sphereGeometry args={[1, 12, 10]} /><meshStandardMaterial color={color} roughness={.85} /></mesh>
+    <mesh position={[0, .14, .025]} castShadow><sphereGeometry args={[.066, 12, 10]} /><meshStandardMaterial color={color} /></mesh>
+    <mesh position={[0, .105, .02]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[.052, .006, 5, 18]} /><meshStandardMaterial color="#364236" /></mesh>
+    <mesh position={[0, .135, .087]} rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[.023, .048, 8]} /><meshStandardMaterial color="#c74b3c" /></mesh>
+    {[-1, 1].map((side) => <React.Fragment key={side}>
+      <mesh position={[side * .057, .16, .047]}><sphereGeometry args={[.007, 8, 6]} /><meshStandardMaterial color="#18251e" /></mesh>
+      <mesh position={[side * .052, -.005, -.014]} scale={[.019, .09, .05]} rotation={[.2, 0, side * -.12]}><sphereGeometry args={[1, 10, 8]} /><meshStandardMaterial color="#4d843a" /></mesh>
+      <Block at={[side * .025, -.123, .025]} size={[.012, .035, .055]} color="#8e8c7d" />
+    </React.Fragment>)}
+    <mesh position={[0, -.18, -.075]} rotation={[-.4, 0, Math.PI]}><coneGeometry args={[.032, .29, 7]} /><meshStandardMaterial color="#4b8654" /></mesh>
+  </group>
+}
+
+function BackyardAviary({ maps }) {
+  const wireGeometry = useMemo(() => {
+    const vertices = []
+    const line = (a, b) => vertices.push(...a, ...b)
+    // Four walls and mesh roof, batched as one line geometry.
+    for (const z of [-.75, .75]) {
+      for (let i = 0; i <= 20; i++) { const x = -1 + i * .1; line([x, 0, z], [x, 1.5, z]) }
+      for (let i = 0; i <= 15; i++) { const y = i * .1; line([-1, y, z], [1, y, z]) }
+    }
+    for (const x of [-1, 1]) {
+      for (let i = 0; i <= 15; i++) { const z = -.75 + i * .1; line([x, 0, z], [x, 1.5, z]) }
+      for (let i = 0; i <= 15; i++) { const y = i * .1; line([x, y, -.75], [x, y, .75]) }
+    }
+    for (let i = 0; i <= 20; i++) { const x = -1 + i * .1; line([x, 1.5, -.75], [x, 1.5, .75]) }
+    for (let i = 0; i <= 15; i++) { const z = -.75 + i * .1; line([-1, 1.5, z], [1, 1.5, z]) }
+    return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+  }, [])
+  useEffect(() => () => wireGeometry.dispose(), [wireGeometry])
+  const steel = { metalness: .55, roughness: .55 }
+  return <group position={[0, .2, -14.7]}>
+    <Block at={[0, -.07, 0]} size={[2, .14, 1.5]} color="#d3cbb8" map={maps.paving} />
+    {[-1, 1].map((x) => [-.75, .75].map((z) => <Block key={`${x}-${z}`} at={[x, .75, z]} size={[.045, 1.5, .045]} color="#a7b3af" material={steel} />))}
+    {[.02, 1.5].map((y) => <React.Fragment key={y}>
+      {[-.75, .75].map((z) => <Block key={z} at={[0, y, z]} size={[2.04, .04, .04]} color="#a7b3af" material={steel} />)}
+      {[-1, 1].map((x) => <Block key={x} at={[x, y, 0]} size={[.04, .04, 1.5]} color="#a7b3af" material={steel} />)}
+    </React.Fragment>)}
+    <lineSegments geometry={wireGeometry}><lineBasicMaterial color="#859b92" transparent opacity={.45} depthWrite={false} /></lineSegments>
+    {/* A small access door on the front face. */}
+    {[-.9, -.3].map((x) => <Block key={x} at={[x, .65, .78]} size={[.035, 1.3, .035]} color="#bac5bf" material={steel} />)}
+    <Block at={[-.6, 1.3, .78]} size={[.63, .035, .035]} color="#bac5bf" material={steel} />
+    <Block at={[-.35, .68, .81]} size={[.08, .035, .035]} color="#666f69" />
+    {[[-.28, .65], [.3, 1.08]].map(([z, y]) => <mesh key={y} position={[0, y, z]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[.025, .035, 1.8, 10]} /><meshStandardMaterial color="#97774f" roughness={1} /></mesh>)}
+    <Ringneck at={[-.5,  .81, -.28]} rotation={.3} />
+    <Ringneck at={[.35,  .81, -.28]} rotation={-.6} />
+    <Ringneck at={[-.25, 1.24, .3]} rotation={.8} />
+    <Ringneck at={[.58, 1.24, .3]} rotation={-.3} />
+  </group>
+}
+
+function FloweringPlant() {
+  return <group position={[-3.5, .14, -14.9]} scale={[1, 2.1, 1]}>
+    <mesh position={[0, .43, 0]} castShadow><cylinderGeometry args={[.035, .06, .86, 8]} /><meshStandardMaterial color="#75593e" /></mesh>
+    {Array.from({ length: 7 }, (_, i) => {
+      const angle = i * 2.4
+      return <mesh key={i} position={[Math.cos(angle) * .3, .65 + i % 3 * .17, Math.sin(angle) * .3]} scale={[1, .85, 1]} castShadow><sphereGeometry args={[.29, 10, 8]} /><meshStandardMaterial color={i % 2 ? '#5c8040' : '#426c39'} roughness={1} /></mesh>
+    })}
+    {Array.from({ length: 16 }, (_, i) => {
+      const angle = i * 2.4
+      const radius = .34 + i % 3 * .065
+      return <group key={i} position={[Math.cos(angle) * radius, .75 + i % 4 * .13, Math.sin(angle) * radius]} rotation={[.5, angle, 0]}>
+        {Array.from({ length: 5 }, (_, petal) => <mesh key={petal} position={[Math.cos(petal * Math.PI * .4) * .042, Math.sin(petal * Math.PI * .4) * .042, 0]} scale={[1, 1, .4]}><sphereGeometry args={[.036, 7, 6]} /><meshStandardMaterial color={i % 2 ? '#d777a0' : '#e9a6c1'} roughness={.8} /></mesh>)}
+        <mesh position={[0, 0, .018]}><sphereGeometry args={[.018, 7, 6]} /><meshStandardMaterial color="#f2d484" /></mesh>
+      </group>
+    })}
+  </group>
+}
+
 function GardenHose() {
   const curve = useMemo(() => new THREE.CatmullRomCurve3([new THREE.Vector3(-.3, .13, -11.2), new THREE.Vector3(-.8, .12, -10.3), new THREE.Vector3(-1.7, .12, -9.7), new THREE.Vector3(-2.3, .3, -8.9)]), [])
   return <group>{[.62, .51].map((radius) => <mesh key={radius} position={[-.2, .12, -11.8]} rotation={[-Math.PI / 2, 0, 0]}><torusGeometry args={[radius, .025, 6, 40]} /><meshStandardMaterial color="#548778" /></mesh>)}<mesh><tubeGeometry args={[curve, 24, .025, 6, false]} /><meshStandardMaterial color="#548778" /></mesh></group>
@@ -121,14 +201,56 @@ function RoofGables({ maps, color }) {
   return [-2.58, 2.58].map((x) => <mesh key={x} position={[x, 5.76, -1]} rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow><shapeGeometry args={[shape]} /><meshStandardMaterial color={color} map={maps.plaster} roughness={.9} side={THREE.DoubleSide} /></mesh>)
 }
 
+function RoofDrainage() {
+  const metal = { metalness: .55, roughness: .48 }
+  return <group>
+    {[4.25, -6.25].map((z) => <React.Fragment key={z}>
+      <Block at={[0, 5.65, z]} size={[5.78, .13, .16]} color="#726f63" material={metal} />
+      <Block at={[2.69, 2.97, z]} size={[.09, 5.35, .09]} color="#c4ba9f" material={metal} />
+      {[.65, 3.1, 5.4].map((y) => <Block key={y} at={[2.69, y, z]} size={[.14, .045, .14]} color="#807d70" material={metal} />)}
+    </React.Fragment>)}
+  </group>
+}
+
+function PorchLight({ at, night }) {
+  return <group position={at}>
+    <Block at={[0, 0, 0]} size={[.18, .32, .12]} color="#343d3e" material={{ metalness: .5, roughness: .45 }} />
+    <Block at={[0, -.03, .07]} size={[.12, .18, .025]} color="#fff0d4" material={{ emissive: '#ffce8f', emissiveIntensity: night ? 2 : 0 }} />
+  </group>
+}
+
+// Left means the left side when looking at the house from the street (+Z).
+// The clear passage runs from the facade at X=-2.58 to the boundary at X=-4.08.
+function SidePassage({ maps }) {
+  const center = -3.33
+  const metal = { metalness: .55, roughness: .48 }
+  return <group>
+    <Block at={[center, .05, -2.6]} size={[1.63, .15, 25.6]} color="#dcd5bf" />
+    <Block at={[center, .14, -2.6]} size={[1.5, .12, 25.6]} color="#e0d8c9" map={maps.paving} />
+    <Block at={[-4.145, .98, -2.6]} size={[.13, 1.85, 25.6]} color="#dfd1b3" map={maps.plaster} />
+    <Block at={[-4.145, 1.94, -2.6]} size={[.17, .08, 25.6]} color="#c6bba4" />
+    <Block at={[center, .88, -15.55]} size={[1.63, 1.7, .14]} color="#d8c9ac" map={maps.plaster} />
+    <group position={[center, .2, 4.35]}>
+      {[-.71, .71].map((x) => <Block key={x} at={[x, .95, 0]} size={[.065, 1.9, .08]} color="#f5f5f2" material={metal} />)}
+      {[.04, 1.86].map((y) => <Block key={y} at={[0, y, 0]} size={[1.42, .065, .08]} color="#f5f5f2" material={metal} />)}
+      {Array.from({ length: 12 }, (_, i) => <Block key={i} at={[(i - 5.5) * .115, .95, 0]} size={[.085, 1.76, .045]} color="#f5f5f2" material={metal} />)}
+      <Block at={[.53, .98, .06]} size={[.045, .19, .05]} color="#b6bdb6" material={metal} />
+    </group>
+  </group>
+}
+
 function Residence({ night, maps, panelCount = 12, simulation, onPanelToggle, neighboring = false }) {
   return <group>
     {/* Narrow duplex plot: driveway, two-storey block, rear veranda and lawn. */}
     <Block at={[0, .05, -2.6]} size={[5.58, .15, 25.6]} color="#dcd5bf" />
+    {!neighboring && <SidePassage maps={maps} />}
     <Block at={[0, .14, 7.05]} size={[5.4, .12, 6.3]} color="#f1e5cb" map={maps.paving} />
     {!neighboring && <Car at={[-.95, .22, 7.45]} rotation={-.06} />}
     <Block at={[0, 2.95, -1]} size={[5.16, 5.7, 10]} color={neighboring ? '#e7dac2' : '#fff0d3'} map={maps.plaster} />
     <RoofGables maps={maps} color={neighboring ? '#e7dac2' : '#fff0d3'} />
+    <RoofDrainage />
+    <PorchLight at={[1.13, 2.2, 4.16]} night={night} />
+    <group position={[0, 0, -6.15]} rotation={[0, Math.PI, 0]}><PorchLight at={[1.1, 2.25, 0]} night={night} /></group>
     {/* Front elevation from the photograph. */}
     <Block at={[1.62, 2.96, 4.07]} size={[.93, 5.69, .12]} color="#fff4d9" map={maps.stone} />
     <Window at={[-1.02, 4.47, 4.06]} width={1.62} height={1.13} night={night} />
@@ -143,7 +265,7 @@ function Residence({ night, maps, panelCount = 12, simulation, onPanelToggle, ne
     {[-1.55, -1.18, -.82, -.48].map((x) => <mesh key={x} position={[x, 1.08, 4.24]}><sphereGeometry args={[.18, 8, 6]} /><meshStandardMaterial color="#617c49" /></mesh>)}
     <Block at={[1.7, .2, 4.72]} size={[1.25, .22, 1.1]} color="#b7b49c" />
     {[1.36, 1.94].map((x, i) => <Tree key={x} at={[x, .29, 4.73 + i * .13]} scale={i ? 1.31 : 1.43} cypress />)}
-    {[-2.73, 2.73].map((x) => <Block key={`front-wall-${x}`} at={[x, .76, 7.05]} size={[.13, 1.45, 6.3]} color="#dfd1b3" map={maps.plaster} />)}
+    {(neighboring ? [-2.73, 2.73] : [2.73]).map((x) => <Block key={`front-wall-${x}`} at={[x, .76, 7.05]} size={[.13, 1.45, 6.3]} color="#dfd1b3" map={maps.plaster} />)}
     {/* The configured solar system remains 12 modules, split across the two roof slopes. */}
     {['front', 'rear'].map((side) => <TiledRoof key={side} at={[0, 6.13, side === 'front' ? 1.6 : -3.6]} width={5.66} depth={5.35} slope={side === 'front' ? .15 : -.15} eave={side === 'front' ? 1 : -1} maps={maps}>
       {!neighboring && PANELS.filter((panel) => panel.side === side).map(({ index, x, z }) => <Module key={index} at={[x, .13, z]} index={index} active={index < panelCount} simulation={simulation} onToggle={onPanelToggle} />)}
@@ -158,8 +280,8 @@ function Residence({ night, maps, panelCount = 12, simulation, onPanelToggle, ne
     {[-2.31, 2.31].map((x) => <Block key={x} at={[x, 1.4, -8.97]} size={[.25, 2.65, .25]} color="#a47750" map={maps.wood} />)}
     <Block at={[0, 2.64, -8.97]} size={[4.92, .2, .22]} color="#765334" map={maps.wood} />
     <Block at={[2.67, 1.12, -7.89]} size={[.09, 1.95, 1.75]} color="#34734f" />
-    <Block at={[0, .08, -12.2]} size={[5.25, .11, 6.4]} color="#e2d7a6" map={maps.grass} />
-    {[-2.73, 2.73].map((x) => <Block key={`rear-wall-${x}`} at={[x, .88, -11.9]} size={[.13, 1.7, 7.35]} color="#d8c9ac" map={maps.plaster} />)}
+    <Block at={[0, .08, -12.2]} size={[5.25, .11, 6.4]} color="#fff" map={maps.lawn} material={{ roughness: 1, bumpScale: .045 }} />
+    {(neighboring ? [-2.73, 2.73] : [2.73]).map((x) => <Block key={`rear-wall-${x}`} at={[x, .88, -11.9]} size={[.13, 1.7, 7.35]} color="#d8c9ac" map={maps.plaster} />)}
     <Block at={[0, .88, -15.55]} size={[5.58, 1.7, .14]} color="#d8c9ac" map={maps.plaster} />
     {!neighboring && <><GardenHose /><mesh position={[1.42, .3, -12.35]} castShadow><cylinderGeometry args={[.39, .28, .44, 16]} /><meshStandardMaterial color="#484940" /></mesh><mesh position={[1.42, .52, -12.35]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[.34, 16]} /><meshStandardMaterial color="#77634d" /></mesh></>}
     {night && !neighboring && <><pointLight position={[-.7, 2.65, 4.55]} color="#ffd4a1" intensity={17} distance={8} /><pointLight position={[0, 2.5, -7.6]} color="#ffd5a3" intensity={13} distance={7} /></>}
@@ -213,12 +335,41 @@ function Interior({ maps, floor, selectedRoom, onRoomSelect, labelPortal }) {
 const CAMERA = { aerial: [15, 19, 26], street: [4.2, 5.8, 17.5], rear: [7.5, 10, -25], top: [0, 33, -2.4], interior: [13, 17, 19], plan: [0, 27, -1] }
 function CameraRig({ preset, floor, controlRef }) {
   const { camera, size } = useThree()
-  useEffect(() => { const position = CAMERA[preset] || CAMERA.aerial; camera.position.set(...position); const portrait = size.width / size.height < .85; camera.position.multiplyScalar(portrait ? 1.22 : 1); const inside = preset === 'interior' || preset === 'plan'; controlRef.current?.target.set(0, inside ? floor === 'upper' ? 3 : 0 : 2, inside ? -1 : preset === 'rear' ? -6.5 : preset === 'street' ? 2 : -2.5); controlRef.current?.update() }, [preset, floor, camera, controlRef, size.width, size.height])
+  const transition = useRef(null)
+  useEffect(() => {
+    const inside = preset === 'interior' || preset === 'plan'
+    const destination = new THREE.Vector3(...(CAMERA[preset] || CAMERA.aerial))
+    if (size.width / size.height < .85) destination.multiplyScalar(1.22)
+    transition.current = {
+      from: camera.position.clone(), to: destination,
+      targetFrom: controlRef.current?.target.clone() || new THREE.Vector3(0, 2, -2.5),
+      targetTo: new THREE.Vector3(0, inside ? floor === 'upper' ? 3 : 0 : 2, inside ? -1 : preset === 'rear' ? -6.5 : preset === 'street' ? 2 : -2.5),
+      elapsed: 0,
+      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .85,
+    }
+  }, [preset, floor, camera, controlRef, size.width, size.height])
+  useEffect(() => {
+    const controls = controlRef.current
+    const cancel = () => { transition.current = null }
+    controls?.addEventListener('start', cancel)
+    return () => controls?.removeEventListener('start', cancel)
+  }, [controlRef])
+  useFrame((_, delta) => {
+    const move = transition.current
+    if (!move || !controlRef.current) return
+    move.elapsed += delta
+    const t = move.duration ? Math.min(1, move.elapsed / move.duration) : 1
+    const eased = t * t * (3 - 2 * t)
+    camera.position.lerpVectors(move.from, move.to, eased)
+    controlRef.current.target.lerpVectors(move.targetFrom, move.targetTo, eased)
+    controlRef.current.update()
+    if (t === 1) transition.current = null
+  })
   return null
 }
 
 function World({ labelPortal, focused, night, sun, panelCount, simulation, onPanelToggle, showFlow, current, labels, mode, floor, selectedRoom, onRoomSelect }) {
-  const maps = useMemo(() => Object.fromEntries(['plaster', 'paving', 'roof', 'grass', 'asphalt', 'wood', 'stone'].map((key) => [key, surfaceTexture(key)])), [])
+  const maps = useMemo(() => Object.fromEntries(['plaster', 'paving', 'roof', 'grass', 'lawn', 'asphalt', 'wood', 'stone'].map((key) => [key, surfaceTexture(key)])), [])
   useEffect(() => () => Object.values(maps).forEach((map) => map.dispose()), [maps])
   const inside = mode === 'interior' || mode === 'plan'
   // Scene north is -Z and east is +X. GPS sets the astronomical direction;
@@ -229,15 +380,18 @@ function World({ labelPortal, focused, night, sun, panelCount, simulation, onPan
     <color attach="background" args={[night ? '#071424' : daylight < .25 ? '#d1aa91' : '#a9c9da']} /><fog attach="fog" args={[night ? '#071424' : daylight < .25 ? '#d0b5a1' : '#b0cbd7', 32, 80]} />
     {!night && <Sky distance={10000} sunPosition={sunDirection} turbidity={3} rayleigh={.7} />}
     <hemisphereLight args={[night ? '#7090c9' : '#d5e8f1', night ? '#19231d' : '#b5a88b', night ? .7 : .65 + daylight * .8]} />
-    <directionalLight position={night ? [-11, 19, 12] : sunDirection} intensity={night ? .8 : .65 + daylight * 2.45} color={night ? '#9cbaef' : daylight < .3 ? '#ffd3a0' : '#fff1d4'} castShadow shadow-mapSize={[2048, 2048]} shadow-normalBias={.025} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
+    <directionalLight position={night ? [-11, 19, 12] : sunDirection} intensity={night ? .8 : .65 + daylight * 2.45} color={night ? '#9cbaef' : daylight < .3 ? '#ffd3a0' : '#fff1d4'} castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-.00015} shadow-normalBias={.035} shadow-radius={3} shadow-camera-near={.5} shadow-camera-far={150} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
+    <directionalLight position={[12, 9, -12]} color={night ? '#6488b6' : '#c3d9ed'} intensity={night ? .18 : .35} />
     <Block at={[0, -.28, 0]} size={[150, .3, 150]} color="#fff" map={maps.grass} />
     <Block at={[0, -.08, 13]} size={[110, .08, 5]} color="#fff" map={maps.asphalt} />
     <Block at={[0, -.01, 10.35]} size={[80, .15, .45]} color="#b7b7a7" />
     <Block at={[0, -.02, 15.65]} size={[80, .14, .45]} color="#b7b7a7" />
     <Block at={[0, -.08, -18.7]} size={[110, .08, 5.3]} color="#fff" map={maps.asphalt} />
     {Array.from({ length: 16 }, (_, i) => <Block key={i} at={[(i - 8) * 5, -.027, 13]} size={[2.2, .014, .075]} color="#c8c8ab" />)}
-    {inside ? <Interior labelPortal={labelPortal} maps={maps} floor={floor} selectedRoom={selectedRoom} onRoomSelect={onRoomSelect} /> : <Residence maps={maps} night={night} panelCount={panelCount} simulation={simulation} onPanelToggle={onPanelToggle} />}
-    {!inside && !focused && [-5.58, 5.58].map((x) => <group key={x} position={[x, 0, 0]}><Residence night={night} maps={maps} neighboring /></group>)}
+    {inside ? <><Interior labelPortal={labelPortal} maps={maps} floor={floor} selectedRoom={selectedRoom} onRoomSelect={onRoomSelect} /><SidePassage maps={maps} /></> : <Residence maps={maps} night={night} panelCount={panelCount} simulation={simulation} onPanelToggle={onPanelToggle} />}
+    <BackyardAviary maps={maps} />
+    <FloweringPlant />
+    {!inside && !focused && [-7.08, 5.58].map((x) => <group key={x} position={[x, 0, 0]}><Residence night={night} maps={maps} neighboring /></group>)}
     {Array.from({ length: 12 }, (_, i) => <Tree key={i} at={[(i - 6) * 3.3, 0, -24 - i % 3 * 2]} scale={1.1 + i % 4 * .15} />)}
     {[-13, -11, 12, 14].map((x, i) => <Tree key={x} at={[x, 0, 5 - i % 2 * 7]} scale={1.25} />)}
     {showFlow && !simulation && !inside && <><FlowLine points={SOLAR_ROUTE} color="#7bf6a1" active={current.solar_kw > 0} /><FlowLine points={GRID_ROUTE} color={current.import_kw > 0 ? '#ff9b63' : '#6bacff'} active={current.import_kw > 0 || current.export_kw > 0} reverse={current.import_kw > 0} /></>}
@@ -251,7 +405,7 @@ export default function ResidenceScene({ focused = false, night = false, sun = n
   const preset = mode === 'interior' || mode === 'plan' ? mode : cameraPreset
   return <div className="residence-scene"><Canvas shadows camera={{ position: CAMERA[preset], fov: 37 }} dpr={[1, 1.5]} gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
     <World labelPortal={labelPortal} focused={focused} night={night} sun={sun} panelCount={panelCount} simulation={simulation} onPanelToggle={onPanelToggle} showFlow={showFlow} current={current} labels={labels} mode={mode} floor={floor} selectedRoom={selectedRoom} onRoomSelect={onRoomSelect} />
-    <OrbitControls ref={controls} makeDefault target={[0, 2, -2.5]} minDistance={10} maxDistance={60} minPolarAngle={.01} maxPolarAngle={1.43} enablePan={false} enableRotate={mode !== 'plan'} />
+    <OrbitControls ref={controls} makeDefault target={[0, 2, -2.5]} minDistance={10} maxDistance={60} minPolarAngle={.01} maxPolarAngle={1.43} enableDamping dampingFactor={.08} rotateSpeed={.65} zoomSpeed={.8} enablePan={false} enableRotate={mode !== 'plan'} />
     <CameraRig preset={preset} floor={floor} controlRef={controls} />
   </Canvas><div className="scene-label-layer" ref={labelPortal} /></div>
 }

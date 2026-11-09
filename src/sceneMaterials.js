@@ -2,6 +2,8 @@ import * as THREE from 'three'
 
 // Procedural materials keep the interactive model independent of remote assets.
 export function surfaceTexture(kind) {
+  const lawn = kind === 'lawn'
+  if (lawn) kind = 'grass'
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = 512
   const ctx = canvas.getContext('2d')
@@ -12,6 +14,15 @@ export function surfaceTexture(kind) {
   for (let i = 0; i < 18000; i++) {
     ctx.fillStyle = `rgba(${random() > .5 ? '255,255,235' : '20,18,13'},${random() * .1})`
     ctx.fillRect(random() * 512, random() * 512, 1 + random() * 3, 1 + random() * 3)
+  }
+  if (kind === 'grass') {
+    for (let i = 0; i < 6500; i++) {
+      const x = random() * 512; const y = random() * 512
+      ctx.strokeStyle = ['#829360', '#526a41', '#738653', '#9a9b65'][i % 4]
+      ctx.lineWidth = .6 + random() * .6
+      ctx.beginPath(); ctx.moveTo(x, y)
+      ctx.lineTo(x + random() * 3 - 1.5, y - 2 - random() * 5); ctx.stroke()
+    }
   }
   if (kind === 'roof') {
     for (let y = 0; y < 512; y += 64) for (let x = 0; x < 512; x += 32) {
@@ -49,7 +60,7 @@ export function surfaceTexture(kind) {
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(kind === 'grass' ? 12 : kind === 'plaster' ? 2 : 1, kind === 'grass' ? 12 : kind === 'roof' ? 2 : 1)
+  texture.repeat.set(kind === 'grass' ? lawn ? 1 : 12 : kind === 'plaster' ? 2 : 1, kind === 'grass' ? lawn ? 1.2 : 12 : kind === 'roof' ? 2 : 1)
   texture.anisotropy = 8
   return texture
 }
