@@ -107,6 +107,15 @@ async def monitor(store, address, interval):
 
     while True:
         try:
+            if not address:
+                store.set_status("procurando dispositivo")
+                matches = await scan_auxsol()
+                if len(matches) != 1:
+                    store.set_status(f"encontrados {len(matches)} dispositivos AUXSOL; aguardando")
+                    await asyncio.sleep(10)
+                    continue
+                address = matches[0][0]
+                print(f"Dispositivo AUXSOL: {matches[0][1]} ({address})", flush=True)
             store.set_status("conectando")
             async with BleakClient(address, timeout=20) as client:
                 if not client.is_connected:
@@ -123,9 +132,10 @@ async def monitor(store, address, interval):
                     # 10000–10083 foram conferidos na captura; não há função de ajuste.
                     await client.write_gatt_char(characteristic, READ_REQUEST, response=True)
                     await asyncio.sleep(interval)
-        except (OSError, RuntimeError, asyncio.TimeoutError) as exc:
+        except Exception as exc:  # Inclui erros WinRT/Bleak para tentar novamente.
             store.set_status(f"desconectado: {exc}")
             print(store.status, file=sys.stderr, flush=True)
+            address = None
             await asyncio.sleep(10)
 
 
@@ -152,12 +162,6 @@ def main():
     store = SampleStore()
     if args.csv:
         load_csv(store, args.csv)
-    elif not args.address:
-        matches = asyncio.run(scan_auxsol())
-        if len(matches) != 1:
-            parser.error(f"Foram encontrados {len(matches)} dispositivos AUXSOL; execute --scan e informe --address")
-        args.address = matches[0][0]
-        print(f"Dispositivo AUXSOL: {matches[0][1]} ({args.address})", flush=True)
     server = start_http(store, args.port)
     print(f"Endpoint: http://127.0.0.1:{args.port}/api/solar", flush=True)
     try:

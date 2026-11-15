@@ -274,13 +274,18 @@ export default function App() {
     // Descobre apenas a ponte AUXSOL local; outras fontes continuam manuais.
     const url = 'http://127.0.0.1:3001/api/solar'
     const controller = new AbortController()
-    fetch(url, { cache: 'no-store', signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((json) => {
+    const discover = () => fetch(url, { cache: 'no-store', signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((json) => {
       if (controller.signal.aborted || json?.status !== 'recebendo' || !Array.isArray(json.samples) || !json.samples.length) return
       importSamples(json.samples.map(normalizeSample), null, 'wifi', true)
       setEndpoint(url)
     }).catch(() => {})
-    return () => controller.abort()
+    discover()
+    const timer = setInterval(discover, 10000)
+    return () => { controller.abort(); clearInterval(timer) }
   }, [endpoint, realSamples.length])
+  useEffect(() => {
+    if (endpoint && useReal && sourceKind === 'wifi') refresh(true)
+  }, [])
   useEffect(() => {
     if (!endpoint || !useReal || sourceKind !== 'wifi') return undefined
     const timer = setInterval(() => refresh(true), 60000)

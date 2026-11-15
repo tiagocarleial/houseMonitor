@@ -6,10 +6,11 @@ Painel web de monitoramento e simulação solar com React, Three.js e Recharts. 
 
 ```bash
 npm install
+python -m pip install -r bridge/requirements.txt
 npm run dev
 ```
 
-Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). Para gerar a versão de produção, execute `npm run build`.
+Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). `npm run dev` inicia o site e a ponte BLE no mesmo terminal; se a ponte já estiver ativa na porta 3001, reutiliza essa instância. A ponte pode levar alguns segundos para localizar o inversor e tenta novamente se a conexão cair. Use `npm run dev:web` para iniciar só o site. Para gerar a versão de produção, execute `npm run build`.
 
 ## Monitoramento
 
@@ -47,17 +48,16 @@ Os APKs, a decompilação, os logs, o TSV e o CSV de leituras reais são **arqui
 
 A ponte `bridge/auxsol_live.py` consulta o inversor diretamente pelo Bluetooth do computador e fornece `http://127.0.0.1:3001/api/solar` ao painel. A leitura ativa requer uma escrita GATT na característica `00007701` com a requisição de função `04` observada na captura; isso solicita telemetria, embora a operação BLE se chame escrita. O comando é limitado a 84 registradores a partir de 10000 e não contém função de ajuste de parâmetros. A ponte foi testada em 15/11/2026 com leituras válidas a cada 60 segundos.
 
-Com o Bluetooth do computador ligado (se houver disputa pela conexão, desconecte o app AUXSOL do inversor):
+Com o Bluetooth do computador ligado, `npm run dev` já inicia a ponte. Se houver disputa pela conexão, desconecte o app AUXSOL do inversor. Para executar **somente** a ponte, sem o servidor Vite:
 
 ```powershell
-python -m pip install -r bridge/requirements.txt
 python bridge/auxsol_live.py --scan
 python bridge/auxsol_live.py --allow-gatt-write
 ```
 
 Se houver mais de um dispositivo AUXSOL no alcance, acrescente `--address ENDERECO` ao último comando. Mantenha a ponte aberta. Em um navegador sem fonte salva, o painel detecta automaticamente a ponte local quando ela já recebeu uma amostra. Caso contrário, escolha **Conectar dados → Ponte local / API**, informe `http://127.0.0.1:3001/api/solar` e clique **Testar e carregar**. O painel consulta o endpoint a cada 60 segundos. A ponte escuta somente em `127.0.0.1` e mantém as últimas 1440 amostras na memória. Para parar a execução manual, pressione `Ctrl+C`; se ela tiver sido iniciada em segundo plano, encerre o processo `bridge/auxsol_live.py`. Para validar o endpoint sem Bluetooth: `python bridge/auxsol_live.py --csv auxsol_apk/auxsol_telemetria.csv`.
 
-A ponte precisa continuar rodando no PC próximo ao inversor. Ela não é iniciada automaticamente após reiniciar o computador. Para verificar se está recebendo dados, abra `http://127.0.0.1:3001/api/solar` **nesse PC**: a resposta deve conter `"status": "recebendo"` e uma lista `samples` com horários recentes. Se o processo for reiniciado, as amostras que estavam apenas na memória da ponte se perdem; o dashboard pode continuar mostrando as amostras já salvas no armazenamento local daquele navegador.
+A ponte precisa continuar rodando no PC próximo ao inversor. Ela não é iniciada automaticamente ao ligar o computador, mas volta quando você executar `npm run dev`. Para verificar se está recebendo dados, abra `http://127.0.0.1:3001/api/solar` **nesse PC**: a resposta deve conter `"status": "recebendo"` e uma lista `samples` com horários recentes. Se o processo for reiniciado, as amostras que estavam apenas na memória da ponte se perdem; o dashboard pode continuar mostrando as amostras já salvas no armazenamento local daquele navegador.
 
 ### Publicação no Vercel e acesso pelo tablet
 
