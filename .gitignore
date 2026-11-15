@@ -3,3 +3,11 @@ dist/
 *.local
 src-backup-before-integration/
 tmp/
+bridge/*.log
+**/__pycache__/
+auxsol_apk/*.apk
+auxsol_apk/jadx_base/
+auxsol_apk/native/
+auxsol_apk/ble_7701_telemetria.tsv
+auxsol_apk/ble_session_logcat.txt
+auxsol_apk/auxsol_telemetria.csv

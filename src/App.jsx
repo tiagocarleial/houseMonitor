@@ -43,7 +43,8 @@ function normalizeSample(raw) {
     frequency_hz: num('frequency_hz'), temperature_c: num('temperature_c'),
     dc1_voltage_v: num('dc1_voltage_v'), dc1_current_a: num('dc1_current_a'),
     dc2_voltage_v: num('dc2_voltage_v'), dc2_current_a: num('dc2_current_a'),
-    energy_today_kwh: num('energy_today_kwh'), wifi_rssi_dbm: sample.wifi_rssi_dbm === undefined || sample.wifi_rssi_dbm === '' || !Number.isFinite(Number(sample.wifi_rssi_dbm)) ? null : Number(sample.wifi_rssi_dbm),
+    energy_today_kwh: num('energy_today_kwh'), energy_total_kwh: num('energy_total_kwh'),
+    wifi_rssi_dbm: sample.wifi_rssi_dbm === undefined || sample.wifi_rssi_dbm === '' || !Number.isFinite(Number(sample.wifi_rssi_dbm)) ? null : Number(sample.wifi_rssi_dbm),
     inverter_status: sample.inverter_status || null,
     alarm_message: sample.alarm_message || null,
   }
@@ -116,17 +117,18 @@ function DataModal({ close, onImport, endpoint, setEndpoint, refresh, error, bus
     try { onImport(parseCsv(await file.text())) } catch (err) { onImport(null, err.message) }
     event.target.value = ''
   }
-  const template = 'timestamp,solar_kw,consumption_kw,import_kw,export_kw,ac_voltage_v,ac_current_a,frequency_hz,temperature_c,dc1_voltage_v,dc1_current_a,dc2_voltage_v,dc2_current_a,inverter_status\n2026-10-25T12:00:00-03:00,4.85,3.20,0,1.65,220,22,60,34,350,7,348,7,Operando\n'
+  const template = 'timestamp,solar_kw,energy_today_kwh,energy_total_kwh,ac_voltage_v,dc1_voltage_v\n2026-10-25T12:00:00-03:00,4.85,20.47,41.76,220,350\n'
   return <div className="modal-backdrop" onMouseDown={close}><div className="modal" onMouseDown={(event) => event.stopPropagation()}>
     <div className="modal-header"><div><span className="eyebrow">FONTE DE DADOS</span><h2>Conectar medições reais</h2></div><button className="icon-button" onClick={close}><X size={19} /></button></div>
-    <p>O datalogger Wi‑Fi envia dados à plataforma Nansen Solar/AUXSOL. Para exibir essas leituras aqui, informe uma ponte local ou endpoint autorizado que forneça JSON. A conexão Wi‑Fi, sozinha, não revela o protocolo do equipamento.</p>
-    <div className="segmented modal-tabs"><button className={tab === 'wifi' ? 'active' : ''} onClick={() => setTab('wifi')}><Wifi size={16} /> Datalogger Wi‑Fi</button><button className={tab === 'csv' ? 'active' : ''} onClick={() => setTab('csv')}><FileUp size={16} /> Arquivo CSV</button></div>
+    <p>Informe uma ponte local ou endpoint autorizado que forneça leituras em JSON. Para AUXSOL por BLE, use a ponte local documentada no README; ela requer acesso Bluetooth no computador.</p>
+    <div className="segmented modal-tabs"><button className={tab === 'wifi' ? 'active' : ''} onClick={() => setTab('wifi')}><Wifi size={16} /> Ponte local / API</button><button className={tab === 'csv' ? 'active' : ''} onClick={() => setTab('csv')}><FileUp size={16} /> Arquivo CSV</button></div>
     {tab === 'csv' ? <div className="modal-section">
+      <p>Para a captura AUXSOL por BLE, importe o arquivo <code>auxsol_apk/auxsol_telemetria.csv</code> gerado pelo conversor. Ele contém leituras históricas; a atualização não é automática.</p>
       <label className="upload-zone"><FileUp size={30} /><strong>Escolher arquivo CSV</strong><span>Obrigatórias: timestamp e solar_kw. As demais medições são opcionais.</span><input type="file" accept=".csv,text/csv" onChange={upload} /></label>
       <button className="text-button" onClick={() => { const blob = new Blob([template], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'modelo-medicoes.csv'; a.click(); URL.revokeObjectURL(url) }}><Download size={16} /> Baixar modelo de CSV</button>
     </div> : <div className="modal-section">
-      <div className="wifi-steps"><div><strong>1</strong><span>Confirme que o datalogger aparece no aplicativo Nansen Solar/AUXSOL.</span></div><div><strong>2</strong><span>Use um endpoint autorizado da plataforma ou uma ponte local que converta as leituras em JSON.</span></div><div><strong>3</strong><span>Informe a URL abaixo. O painel atualiza os dados a cada 60 segundos.</span></div></div>
-      <label className="field-label">URL da ponte Wi‑Fi ou API autorizada</label>
+      <div className="wifi-steps"><div><strong>1</strong><span>Inicie a ponte local ou prepare uma API autorizada.</span></div><div><strong>2</strong><span>Confira que o endpoint retorna uma lista de leituras em JSON.</span></div><div><strong>3</strong><span>Informe a URL abaixo. O painel atualiza os dados a cada 60 segundos.</span></div></div>
+      <label className="field-label">URL da ponte local ou API autorizada</label>
       <input className="text-input" type="url" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} placeholder="http://192.168.1.50:3001/api/solar" />
       <p className="code-help">Resposta: <code>{'{ "samples": [{ "timestamp": "...", "solar_kw": 4.85, "ac_voltage_v": 220, "inverter_status": "Operando" }] }'}</code></p>
       <button className="primary-button" disabled={busy || !endpoint} onClick={refresh}>{busy ? 'Conectando...' : 'Testar e carregar'}</button>
@@ -268,6 +270,18 @@ export default function App() {
     finally { clearTimeout(timeout); syncInProgress.current = false; setBusy(false) }
   }
   useEffect(() => {
+    if (endpoint || realSamples.length) return undefined
+    // Descobre apenas a ponte AUXSOL local; outras fontes continuam manuais.
+    const url = 'http://127.0.0.1:3001/api/solar'
+    const controller = new AbortController()
+    fetch(url, { cache: 'no-store', signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((json) => {
+      if (controller.signal.aborted || json?.status !== 'recebendo' || !Array.isArray(json.samples) || !json.samples.length) return
+      importSamples(json.samples.map(normalizeSample), null, 'wifi', true)
+      setEndpoint(url)
+    }).catch(() => {})
+    return () => controller.abort()
+  }, [endpoint, realSamples.length])
+  useEffect(() => {
     if (!endpoint || !useReal || sourceKind !== 'wifi') return undefined
     const timer = setInterval(() => refresh(true), 60000)
     return () => clearInterval(timer)
@@ -289,7 +303,7 @@ export default function App() {
       <div className="page-content">
         <div className="page-heading"><div><div className="eyebrow">{section === 'Casa inteligente' ? 'AUTOMAÇÃO RESIDENCIAL' : 'MONITORAMENTO RESIDENCIAL'}</div><h1>{mode === 'sim' ? 'Simulação solar' : section}</h1><p>{mode === 'sim' ? 'Planeje a posição dos módulos e estime a geração.' : sectionDescriptions[section]}</p></div></div>
         {section !== 'Casa inteligente' && <div className="tabbar"><button className={mode === 'real' ? 'active' : ''} onClick={() => setMode('real')}><Activity size={18} /> Monitoramento</button><button className={mode === 'sim' ? 'active' : ''} onClick={() => setMode('sim')}><Layers3 size={18} /> Simulação</button>{mode === 'real' && section === 'Visão geral' && <><div className="overview-connection">
-          <span className={`overview-status ${connectionStatus === 'error' ? 'failed' : demo ? 'waiting' : ''}`} title={error || (lastSync ? `Última sincronização: ${new Date(lastSync).toLocaleString('pt-BR')}` : undefined)}><Info size={13} />{connectionStatus === 'error' ? 'Falha na conexão' : demo ? 'Sem leituras' : sourceKind === 'wifi' ? 'Fonte Wi-Fi' : 'CSV importado'}</span>
+          <span className={`overview-status ${connectionStatus === 'error' ? 'failed' : demo ? 'waiting' : ''}`} title={error || (lastSync ? `Última sincronização: ${new Date(lastSync).toLocaleString('pt-BR')}` : undefined)}><Info size={13} />{connectionStatus === 'error' ? 'Falha na conexão' : demo ? 'Sem leituras' : sourceKind === 'wifi' ? 'Ponte / API' : 'CSV importado'}</span>
           <button className="overview-connect-button" disabled={busy} onClick={!demo && sourceKind === 'wifi' ? () => refresh(true) : () => setShowModal(true)}><RotateCcw size={14} />{busy ? 'Atualizando...' : !demo && sourceKind === 'wifi' ? 'Atualizar' : 'Conectar dados'}</button>
           {connectionStatus === 'error' && error && <small className="overview-connection-error" role="status">{error}</small>}
         </div><button className="scene-fullscreen-entry" onClick={() => document.querySelector('.scene-immersive')?.requestFullscreen?.()} title="Exibir o monitoramento em tela cheia; pressione Esc para sair"><Maximize size={15} /> Tela cheia</button></>}</div>}
